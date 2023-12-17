@@ -1,0 +1,351 @@
+version: '2'
+services:
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce
+    restart: unless-stopped
+    ports:
+      - 9000:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/server/portainer/data:/data
+
+  sonarr:
+    image: linuxserver/sonarr
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - UMASK_SET=022 #optional
+    volumes:
+      - /mnt/server/sonarr/data:/config
+      - /mnt/server/media/tvshows:/tv
+      - /mnt/server/downloads:/downloads
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  radarr:
+    image: linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=UTC
+      - UMASK=022 #optional
+    volumes:
+      - /mnt/server/radarr/config:/config
+      - /mnt/server/media/movies:/movies
+      - /mnt/server/downloads:/downloads
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
+  lidarr:
+    image: linuxserver/lidarr
+    container_name: lidarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - UMASK_SET=022 #optional
+    volumes:
+      - /mnt/server/lidarr/config:/config
+      - /mnt/server/media/music:/music
+      - /mnt/server/downloads:/downloads
+    ports:
+      - 8686:8686
+
+  bazarr:
+    image: linuxserver/bazarr
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - UMASK_SET=022 #optional
+    volumes:
+      - /mnt/server/bazarr/config:/config
+      - /mnt/server/media/movies:/movies
+      - /mnt/server/media/tvshows:/tv
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+
+  jackett:
+    image: linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - AUTO_UPDATE=true #optional
+      # - RUN_OPTS=<run options here> #optional
+    volumes:
+      - /mnt/server/jackett/config:/config
+      - /mnt/server/downloads:/downloads
+    ports:
+      - 9117:9117
+    restart: unless-stopped
+
+  jellyfin:
+    image: ghcr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - UMASK_SET=<022> #optional
+    volumes:
+      - /mnt/server/jellyfin/config:/config
+      - /mnt/server/media/tvshows:/data/tvshows
+      - /mnt/server/media/movies:/data/movies
+      #- /opt/vc/lib:/opt/vc/lib #optional
+    ports:
+      - 8096:8096
+      - 8920:8920 #optional
+      - 7359:7359/udp #optional
+      - 1900:1900/udp #optional
+    #devices:
+      #- /dev/dri:/dev/dri #optional
+      #- /dev/vcsm:/dev/vcsm #optional
+      #- /dev/vchiq:/dev/vchiq #optional
+      #- /dev/video10:/dev/video10 #optional
+      #- /dev/video11:/dev/video11 #optional
+      #- /dev/video12:/dev/video12 #optional
+    restart: always
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK_SET=022
+      - WEBUI_PORT=15080
+    volumes:
+      - /mnt/server/qbittorrent/config:/config
+      - /mnt/server/downloads:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 15080:15080
+      - 1080:1080
+    depends_on: 
+      - vpn
+    restart: always
+  nzbget:
+    image: ghcr.io/linuxserver/nzbget
+    container_name: nzbget
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - /mnt/server/nzbget/config:/config
+      - /mnt/server/downloads:/downloads
+    ports:
+      - 6789:6789
+    restart: unless-stopped
+
+#######################################
+# NGINX Servers (WebServ NPMP)
+
+  nginx01:
+    image: nginx:latest
+    container_name: Web-Serv1
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 60101:80
+    volumes:
+      - /mnt/server/WebServ/nginx01/www/html/:/var/www/html/nginx01
+      - /mnt/server/WebServ/nginx01/config/conf.d/:/etc/nginx/conf.d
+    links:
+      - php-fpm8
+    depends_on:
+      - php-fpm8
+
+  nginx02:
+    image: nginx:latest
+    container_name: Web-Serv2
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 60102:80
+    volumes:
+      - /mnt/server/WebServ/nginx02/www/html/:/var/www/html/nginx02
+      - /mnt/server/WebServ/nginx02/config/conf.d/:/etc/nginx/conf.d
+    links:
+      - php-fpm8
+    depends_on:
+      - php-fpm8
+
+# PHP8 FPN (WebServ NPMP)
+
+  php-fpm8:
+    image: php:8.2-fpm
+    container_name: PHP-8-FPM
+    restart: unless-stopped
+    volumes:
+      - /mnt/server/WebServ/nginx01/www/html/:/var/www/html/nginx01
+      - /mnt/server/WebServ/nginx02/www/html/:/var/www/html/nginx02
+
+# MariaDB (WebServ NPMP)
+
+  mariadb:
+    image: linuxserver/mariadb
+    container_name: MariaDB
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - PUID=1000 # for UserID
+      - PGID=1000 # for GroupID
+      - MYSQL_USER=lmds # This user will have superuser access to the database
+      - MYSQL_ROOT_PASSWORD=passw0rd # Set this to root password for installation (minimum 4 characters).
+      - MYSQL_PASSWORD=passw0rd # Set this to the password you want to use for you MYSQL_USER (minimum 4 characters).
+      - MYSQL_DATABASE=lmdsdb # Specify the name of a database to be created on image startup.
+    volumes:
+      - /mnt/server/mariadb:/config # Contains the db itself and all assorted settings.
+    ports:
+      - 3306:3306/tcp # MariaDB listens on this port
+
+# PHP MyAdmin (WebServ NPMP)
+
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpMyAdmin
+    restart: unless-stopped
+    environment:
+      - TZ=UTC # Specify a timezone to use
+      - PUID=1000 # User ID to run as
+      - PGID=1000 # Group ID to run as
+      - PMA_ARBITRARY=1 # Set to 1 to allow you to connect to any server. Setting to 0 will only allow you to connect to specified hosts
+    volumes:
+      - /mnt/server/phpmyadmin:/config # Contains all relevant configuration files.
+    ports:
+      - 8888:80/tcp # Web UI
+    depends_on:
+      - mariadb
+# Please read this: https://greenfrognest.com/LMDSTraefikProxy.php before anything, if you are not familiar with reverse proxy, domains, TLS/SSL etc. 
+
+# ! = Important - something to watch up for.
+# ^ = Mandatory to the config - not always mandatory according to traefik documentation.
+# * = Specific to your config - you have to change it and adopt to your situation.
+# ? = Optional - us if you like.
+
+  traefik:
+    container_name: traefik      # ^ Container name
+    image: traefik:latest        # ^ Pull latest image 
+    ports:                       # ! Remember to open below ports on your router and forward them to the server where Traefik is running - otherwise requests from the Internet will be blocked by your router/firewall and nothing will reach Traefik.
+      - 80:80                    # ^ Port exposed by Traefik container - related to aliases defined below under "command:" section
+      - 443:443                  # ^ Port exposed by Traefik container - related to aliases defined below under "command:" section
+      - 8080:8080                # ^ Port exposed by Traefik container - related to aliases defined below under "command:" section
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock       # ^ Docker volume allowing Traefik to access Docker engine - this way Traefik knows what containers are running and what are their network settings.
+      - /root/DockerConfig/traefik/acme:/acme           # ^ Docker volume for Traefik to store TLS certificate
+      - /root/DockerConfig/traefik/logs:/logs           # ? Docker volume for Traefik to store logs
+    #      - /mnt/server/traefik.yml:/traefik.yml:ro              # ? Traefik file provider definitions
+    #      - /mnt/server/config.yml:/config.yml:ro                # ? External Traefik config file
+
+    environment:        # ^ Environment variables below are specific to CloudFlare 
+                        # as they are my DNS provider which is also defined few lines below
+                        # (--certificatesResolvers.letsencrypt.acme.dnsChallenge.provider=cloudflare")
+                        # Just because I use Cloudflare, variables below are what they are 
+                        # and I took them from here: (https://doc.traefik.io/traefik/https/acme/#providers). 
+                        # Find your DNS provider there and check what variables you should use instead.
+      - CF_API_EMAIL=your.email@gmail.com                   # *
+      - CF_API_KEY=482551228411726548CB1F8B0A1443C9         # *
+
+    command:            
+                     # Globals    
+      - --api=true      # ^ Enabling Traefik API - In production API, Access should be secured 
+                        # by authentication and authorizations if exposed outside the network
+                        # (https://doc.traefik.io/traefik/operations/api/#configuration)
+      - --global.checkNewVersion=true               # ? Periodically check for update - (Default: true)
+      - --log.level=DEBUG                           # ? Log level - (Default: ERROR) other logging levels are DEBUG, PANIC, FATAL, ERROR, WARN, and INFO.
+      - --log.filePath=/logs/traefik.log            # ? Log path - optional - related to volume /logs defined above
+      - --accessLog.filePath=/logs/access.log       # ? Log path - optional - related to volume /logs defined above
+      - --accessLog.bufferingSize=100               # ? Log size - optional
+
+                                                # Docker
+      - --providers.docker=true                     # ^ Enable Docker provider - other providers (https://doc.traefik.io/traefik/providers/overview)
+      - --providers.docker.exposedbydefault=false   # ^ Expose only containers that have labels setup (https://doc.traefik.io/traefik/providers/docker/#exposedbydefault)
+      - --providers.docker.endpoint=unix:///var/run/docker.sock # ^ Traefik requires access to the Docker socket in order to get its dynamic configuration from there - related to volume defined above
+
+                                                # Entrypoints
+      - --entryPoints.console.address=:8080         # ^ Defining port 8080 as "alias" called "console" - this port will be reachable from outside of Traefik container
+      - --entryPoints.web.address=:80               # ^ Defining port 80 as "alias" called "web" - this port will be reachable from outside of Traefik container
+      - --entrypoints.websecure.address=:443        # ^ Defining port 443 as "alias" called "websecure" - this port will be reachable from outside of Traefik container
+
+                                                # Redirection to SSL
+      - --entryPoints.web.http.redirections.entryPoint.to=websecure     # ^ If trying to access service using port 80 redirect to 443
+      - --entryPoints.web.http.redirections.entryPoint.scheme=https     # ^ If trying to access service using http redirect to https
+      - --entryPoints.web.http.redirections.entrypoint.permanent=true   # ^ Apply a permanent redirection.
+
+                                                # LetsEncrypt (https://doc.traefik.io/traefik/user-guides/docker-compose/acme-tls/)
+      - --certificatesResolvers.letsencrypt.acme.email=your.email@gmail.com     # * Put your email address instead - the same as above in "CF_API_EMAIL"
+      - --certificatesResolvers.letsencrypt.acme.storage=acme/acme.json         # ^ Storage location where ACME certificates are going to be saved, this work with conjunction to volume definer above.
+      - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory     # ! Let's Encrypt Staging Server, comment out after testing - (https://doc.traefik.io/traefik/https/acme/#caserver) - highly recommend that you config works ok in staging before using Let's Encrypt live servers. In case of failures in this config you might be banned by Let's Encrypt for a while for abusing their live servers with faulty configuration requests.     
+      - --certificatesResolvers.letsencrypt.acme.dnsChallenge=true # * DNS challenge, there are other ways of proving that you owned domain name defined below (https://doc.traefik.io/traefik/https/acme/#dnschallenge)
+      - --certificatesResolvers.letsencrypt.acme.dnsChallenge.provider=cloudflare   # * Find your provider (https://doc.traefik.io/traefik/https/acme/#providers) and replace cloudflare with the one you use. This corresponds to "environment:" variables defined earlier. 
+     #- --providers.file=true      # ? Enable file provider if you need it.
+
+    labels:                     # Labels - finally section where you define if container should be exposed, under what domain name, IP, path etc. You will be creating labels for each container that you want Traefik to route packets to from the Internet.                                       
+      - traefik.enable=true     # ^ Enabling Traefik container to be exposed by itself
+      - traefik.http.middlewares.admin.basicauth.users=admin:{SHA}/jIOs1SoLMVGd6FMOlt5mF6Ega0=  # * Generate SHA1 to protect access to the Web UI here: https://hostingcanada.org/htpasswd-generator - on this page I used: user/password = admin/greenfrog and got htpasswd: admin:{SHA}/jIOs1SoLMVGd6FMOlt5mF6Ega0=  (https://doc.traefik.io/traefik/middlewares/basicauth/). You can reuse this line multiple times under different containers to protect access to them.  
+
+                                                                                # Define route/router called "thisproxylocal"
+      - traefik.http.routers.thisproxylocal.rule=Host(`xxx.xxx.xxx.xxx`)            # * Change xxx.xxx.xxx.xxx to your Docker server IP
+      - traefik.http.routers.thisproxylocal.entryPoints=console                     # ^ Traefik WebUI is by default exposed on port 8080 so we have to redirect all requests to that port by creating entryPoint equal to "console" - alias that we defined several lines above.
+      - traefik.http.routers.thisproxylocal.service=api@internal                    # ^ Enable WebUI service on this specific router.
+      - traefik.http.routers.thisproxylocal.middlewares=admin                       # ^ Enabling authentication on this specific router.
+
+                                                                                # Define route/router called "thisproxytls"
+      - traefik.http.services.thisproxytls.loadbalancer.server.port=8080            # ^ Define loadBalancer port for WebUI
+      - traefik.http.routers.thisproxytls.rule=Host(`your.domain.com`)              # * Define URL that will be redirected to this container on port 8080 from https
+      - traefik.http.routers.thisproxytls.entrypoints=websecure                     # ^ Just because we defined redirection where any request from the Internet received on port 80 - http will be redirected to port 443 https we open websecure entrypoint as this is from where we will be receiving all the traffick anyway.
+      - traefik.http.routers.thisproxytls.service=api@internal                      # ^ Enable WebUI service on this specific router.
+      - traefik.http.routers.thisproxytls.middlewares=admin                         # ^ Enabling authentication on this specific router.
+      - traefik.http.routers.thisproxytls.tls.certresolver=letsencrypt              # ^ Use Let's Encrypt resolver for TLS certification
+
+    restart: always
+# ======================================================================================================================================
+# Check instructions at https://greenfrognest.com/LMDSVPN.php if you would like to secure other containers using this one as a gateway.
+# ======================================================================================================================================
+  vpn:
+    container_name: vpn-gateway
+    image: dperson/openvpn-client
+    restart: unless-stopped
+    ports:            # List all port numbers of the containers that you would like to put behind VPN. Remember, these ports can only exist in a single place inside entire docker-compose.yml file.
+      - 90:80         # Redirecting to port 90 as 80 we will need this at some point for reverseproxy traefik. 
+    dns:              # Use VPN provided DNS IPs if you have them otherwise leave as is.
+      - 8.8.8.8
+      - 8.8.4.4
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - '/dev/net/tun:/dev/net/tun:rwm'
+    environment:
+      FIREWALL: ''    # If you use different VPN ports then default 1194 add them in here, otherwise leave it empty as is.
+     #VPN 'server_address;user;password;port'    # Configure VPN server address, authentication and port if needed by your VPN provider (port value is optional) we will use an external config file for this, leave commented as is.
+      PUID: 1000
+      PGID: 1000
+      TZ: UTC+0
+      ROUTE: '192.168.0.0/16'    # Specify subnet of your home LAN in order to connect into the container behind VPN - if you don't, containers will work but you wont be able to connect to them locally.
+    networks:
+      - default
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    security_opt:
+      - label:disable
+    stdin_open: true
+    tty: true
+    volumes:
+      - /mnt/server/vpn:/vpn    # This folder should contain two files:
+                      # 1. Copy .ovpn file you received from VPN provider in here and rename it to vpn.conf
+                      # 2. Create vpn.auth file and put there your username and password in two separate lines one under another.
+                      # Important: edit vpn.conf file you renamed and find line called auth-user-pass append it with a path to your vpn.auth file, in my case: auth-user-pass /vpn/vpn.auth 
