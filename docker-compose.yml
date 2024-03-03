@@ -127,11 +127,7 @@ services:
     volumes:
       - /mnt/server/qbittorrent/config:/config
       - /mnt/server/downloads:/downloads
-    ports:
-      - 6881:6881
-      - 6881:6881/udp
-      - 15080:15080
-      - 1080:1080
+    network_mode: "service:vpn"
     depends_on: 
       - vpn
     restart: always
@@ -320,6 +316,10 @@ services:
     restart: unless-stopped
     ports:            # List all port numbers of the containers that you would like to put behind VPN. Remember, these ports can only exist in a single place inside entire docker-compose.yml file.
       - 90:80         # Redirecting to port 90 as 80 we will need this at some point for reverseproxy traefik. 
+      - 6881:6881
+      - 6881:6881/udp
+      - 15080:15080
+      - 1080:1080
     dns:              # Use VPN provided DNS IPs if you have them otherwise leave as is.
       - 8.8.8.8
       - 8.8.4.4
