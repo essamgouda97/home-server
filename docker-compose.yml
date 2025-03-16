@@ -1,14 +1,52 @@
 services:
 
-  portainer:
-    container_name: portainer
-    image: portainer/portainer-ce
+  vpn:
+    container_name: vpn-gateway
+    image: dperson/openvpn-client
     restart: unless-stopped
     ports:
-      - 9000:9000
+      - 90:80
+      - 6881:6881
+      - 6881:6881/udp
+      - 15080:15080
+      - 1080:1080
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - '/dev/net/tun:/dev/net/tun:rwm'
+    environment:
+      FIREWALL: ''
+      PUID: 1000
+      PGID: 1000
+      TZ: UTC+0
+      ROUTE: '192.168.1.0/24'
+    networks:
+      - proxy
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    security_opt:
+      - label:disable
+    stdin_open: true
+    tty: true
+    volumes:
+      - /mnt/server/vpn:/vpn
+
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /mnt/server/portainer/data:/data
+    ports:
+      - "9000:9000"
+    networks:
+      - proxy
+    restart: unless-stopped
 
   sonarr:
     image: linuxserver/sonarr
@@ -17,13 +55,14 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
-      - UMASK_SET=022 #optional
     volumes:
       - /mnt/server/sonarr/data:/config
       - /mnt/server/media/tvshows:/tv
       - /mnt/server/downloads:/downloads
     ports:
-      - 8989:8989
+      - "8989:8989"
+    networks:
+      - proxy
     restart: unless-stopped
 
   radarr:
@@ -33,13 +72,15 @@ services:
       - PUID=0
       - PGID=0
       - TZ=UTC
-      - UMASK=022 #optional
+      - UMASK=022
     volumes:
       - /mnt/server/radarr/config:/config
       - /mnt/server/media/movies:/movies
       - /mnt/server/downloads:/downloads
     ports:
-      - 7878:7878
+      - "7878:7878"
+    networks:
+      - proxy
     restart: unless-stopped
 
   bazarr:
@@ -49,13 +90,14 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
-      - UMASK_SET=022 #optional
     volumes:
       - /mnt/server/bazarr/config:/config
       - /mnt/server/media/movies:/movies
       - /mnt/server/media/tvshows:/tv
     ports:
-      - 6767:6767
+      - "6767:6767"
+    networks:
+      - proxy
     restart: unless-stopped
 
   jackett:
@@ -65,15 +107,16 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
-      - AUTO_UPDATE=true #optional
-      # - RUN_OPTS=<run options here> #optional
+      - AUTO_UPDATE=true
     volumes:
       - /mnt/server/jackett/config:/config
       - /mnt/server/downloads:/downloads
     ports:
-      - 9117:9117
+      - "9117:9117"
+    networks:
+      - proxy
     restart: unless-stopped
-  
+
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
@@ -84,22 +127,26 @@ services:
     volumes:
       - /mnt/server/prowlarr/data:/config
     ports:
-      - 9696:9696
+      - "9696:9696"
+    networks:
+      - proxy
     restart: unless-stopped
-  
+
   jellyseerr:
     image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     environment:
       - LOG_LEVEL=debug
       - TZ=UTC
-      - PORT=5055 #optional
-    ports:
-      - 5055:5055
+      - PORT=5055
     volumes:
       - /mnt/server/jellyseerr/config:/app/config
+    ports:
+      - "5055:5055"
+    networks:
+      - proxy
     restart: always
-  
+
   jellyfin:
     image: ghcr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -107,26 +154,17 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
-      - UMASK_SET=<022> #optional
+      - UMASK_SET=022
     volumes:
       - /mnt/server/jellyfin/config:/config
       - /mnt/server/media/tvshows:/data/tvshows
       - /mnt/server/media/movies:/data/movies
-      #- /opt/vc/lib:/opt/vc/lib #optional
     ports:
-      - 8096:8096
-      - 8920:8920 #optional
-      - 7359:7359/udp #optional
-      - 1900:1900/udp #optional
-    #devices:
-      #- /dev/dri:/dev/dri #optional
-      #- /dev/vcsm:/dev/vcsm #optional
-      #- /dev/vchiq:/dev/vchiq #optional
-      #- /dev/video10:/dev/video10 #optional
-      #- /dev/video11:/dev/video11 #optional
-      #- /dev/video12:/dev/video12 #optional
+      - "8096:8096"
+    networks:
+      - proxy
     restart: always
-  
+
   qbittorrent:
     image: linuxserver/qbittorrent
     container_name: qbittorrent
@@ -139,9 +177,10 @@ services:
       - /mnt/server/qbittorrent/config:/config
       - /mnt/server/downloads:/downloads
     network_mode: "service:vpn"
-    depends_on: 
+    depends_on:
       - vpn
-    restart: unless-stopped 
+    restart: unless-stopped
+
   nzbget:
     image: ghcr.io/linuxserver/nzbget
     container_name: nzbget
@@ -153,48 +192,14 @@ services:
       - /mnt/server/nzbget/config:/config
       - /mnt/server/downloads:/downloads
     ports:
-      - 6789:6789
+      - "6789:6789"
+    networks:
+      - proxy
     restart: unless-stopped
 
-# ======================================================================================================================================
-# Check instructions at https://greenfrognest.com/LMDSVPN.php if you would like to secure other containers using this one as a gateway.
-# ======================================================================================================================================
-  vpn:
-    container_name: vpn-gateway
-    image: dperson/openvpn-client
-    restart: unless-stopped
-    ports:            # List all port numbers of the containers that you would like to put behind VPN. Remember, these ports can only exist in a single place inside entire docker-compose.yml file.
-      - 90:80         # Redirecting to port 90 as 80 we will need this at some point for reverseproxy traefik. 
-      - 6881:6881
-      - 6881:6881/udp
-      - 15080:15080
-      - 1080:1080
-    dns:              # Use VPN provided DNS IPs if you have them otherwise leave as is.
-      - 8.8.8.8
-      - 8.8.4.4
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - '/dev/net/tun:/dev/net/tun:rwm'
-    environment:
-      FIREWALL: ''    # If you use different VPN ports then default 1194 add them in here, otherwise leave it empty as is.
-     #VPN 'server_address;user;password;port'    # Configure VPN server address, authentication and port if needed by your VPN provider (port value is optional) we will use an external config file for this, leave commented as is.
-      PUID: 1000
-      PGID: 1000
-      TZ: UTC+0
-      ROUTE: '192.168.0.0/16'    # Specify subnet of your home LAN in order to connect into the container behind VPN - if you don't, containers will work but you wont be able to connect to them locally.
-    networks:
-      - default
-    read_only: true
-    tmpfs:
-      - /run
-      - /tmp
-    security_opt:
-      - label:disable
-    stdin_open: true
-    tty: true
-    volumes:
-      - /mnt/server/vpn:/vpn    # This folder should contain two files:
-                      # 1. Copy .ovpn file you received from VPN provider in here and rename it to vpn.conf
-                      # 2. Create vpn.auth file and put there your username and password in two separate lines one under another.
-                      # Important: edit vpn.conf file you renamed and find line called auth-user-pass append it with a path to your vpn.auth file, in my case: auth-user-pass /vpn/vpn.auth 
+networks:
+  proxy:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
