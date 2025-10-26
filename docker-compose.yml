@@ -116,7 +116,18 @@ services:
     networks:
       - proxy
     restart: unless-stopped
-
+  flaresolverr:
+    # DockerHub mirror flaresolverr/flaresolverr:latest
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=Etc/UTC
+    ports:
+      - "${PORT:-8191}:8191"
+    restart: unless-stopped 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
@@ -159,6 +170,7 @@ services:
       - /mnt/server/jellyfin/config:/config
       - /mnt/server/media/tvshows:/data/tvshows
       - /mnt/server/media/movies:/data/movies
+      - /mnt/server/media/m3u:/data/m3u
     ports:
       - "8096:8096"
     networks:
