@@ -209,6 +209,93 @@ services:
       - proxy
     restart: unless-stopped
 
+  moltbot-gateway:
+    build:
+      context: ./moltbot-docker
+      dockerfile: Dockerfile
+    container_name: moltbot-gateway
+    image: moltbot:local
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - NODE_ENV=production
+      - MOLTBOT_GATEWAY_TOKEN=${MOLTBOT_GATEWAY_TOKEN}
+      - MOLTBOT_GATEWAY_BIND=0.0.0.0
+      - MOLTBOT_GATEWAY_PORT=18789
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAWDBOT_STATE_DIR=/home/node/.clawdbot
+      - CLAWDBOT_WORKSPACE=/home/node/clawd
+
+    volumes:
+      - /mnt/server/moltbot/config:/home/node/.clawdbot:rw
+      - /mnt/server/moltbot/workspace:/home/node/clawd:rw
+      - /mnt/server/media:/media:ro
+
+    ports:
+      - "127.0.0.1:18789:18789"
+      - "127.0.0.1:18790:18790"
+      - "127.0.0.1:18793:18793"
+
+    networks:
+      - proxy
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  moltbot-cli:
+    build:
+      context: ./moltbot-docker
+      dockerfile: Dockerfile
+    image: moltbot:local
+    container_name: moltbot-cli
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAWDBOT_STATE_DIR=/home/node/.clawdbot
+
+    volumes:
+      - /mnt/server/moltbot/config:/home/node/.clawdbot:rw
+      - /mnt/server/moltbot/workspace:/home/node/clawd:rw
+
+    networks:
+      - proxy
+
+    entrypoint: ["node", "dist/index.js"]
+    command: ["--help"]
+
+    stdin_open: true
+    tty: true
+
+    profiles:
+      - cli
+
 networks:
   proxy:
     driver: bridge
