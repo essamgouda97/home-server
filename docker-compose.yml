@@ -222,15 +222,14 @@ services:
       - TZ=UTC
       - NODE_ENV=production
       - MOLTBOT_GATEWAY_TOKEN=${MOLTBOT_GATEWAY_TOKEN}
-      - MOLTBOT_GATEWAY_BIND=0.0.0.0
+      - MOLTBOT_GATEWAY_BIND=127.0.0.1
       - MOLTBOT_GATEWAY_PORT=18789
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - CLAWDBOT_STATE_DIR=/home/node/.clawdbot
-      - CLAWDBOT_WORKSPACE=/home/node/clawd
+      - CLAWDBOT_STATE_DIR=/home/node/.openclaw
 
     volumes:
-      - /mnt/server/moltbot/config:/home/node/.clawdbot:rw
-      - /mnt/server/moltbot/workspace:/home/node/clawd:rw
+      - /mnt/server/moltbot/config:/home/node/.openclaw:rw
+      - /mnt/server/moltbot/workspace:/home/node/.openclaw/workspace:rw
       - /mnt/server/media:/media:ro
 
     ports:

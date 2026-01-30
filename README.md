@@ -194,15 +194,11 @@ make moltbot-env
 # 2. Build and configure (includes Claude + WhatsApp setup)
 make moltbot-setup
 
-# 3. Configure media servers and allowlist
-nano /mnt/server/moltbot/config/moltbot.json
-# Add: API keys for Sonarr/Radarr/Jellyfin
-# Add: Your WhatsApp number to allowFrom
-
-# 4. Start gateway
+# 3. Start gateway
 make start-moltbot
 
-# 5. Test - Send "hello" via WhatsApp
+# 4. Message the bot on WhatsApp — it will walk you through
+#    providing API keys for Sonarr/Radarr/Jellyfin
 ```
 
 ### Quick Setup (API Key)
@@ -222,48 +218,46 @@ make moltbot-setup
 make moltbot-whatsapp
 # Scan QR code with WhatsApp app
 
-# 5. Configure media servers
-nano /mnt/server/moltbot/config/moltbot.json
-# Add Sonarr/Radarr/Jellyfin API keys and your phone number
-
-# 6. Start gateway
+# 5. Start gateway
 make start-moltbot
+
+# 6. Message the bot on WhatsApp — provide API keys when asked
 ```
 
 ### Configuration
 
-After initial setup, configure media server integration:
+The bot uses two config locations:
 
-```bash
-nano /mnt/server/moltbot/config/moltbot.json
-```
+- **Main config**: `/mnt/server/moltbot/config/openclaw.json` — gateway settings, channels, auth
+- **Workspace `.env`**: `/mnt/server/moltbot/workspace/.env` — API keys for media services
 
-Get API keys from:
+API keys are provided to the bot via WhatsApp during the initial conversation. The bot saves them to its workspace `.env` file and uses them to make HTTP calls to your services via the Docker bridge gateway (`172.18.0.1`).
+
+**To provide API keys**, message the bot on WhatsApp with your keys:
 - **Sonarr**: http://localhost:8989 → Settings → General → API Key
 - **Radarr**: http://localhost:7878 → Settings → General → API Key
 - **Jellyfin**: http://localhost:8096 → Dashboard → API Keys → New
 
-Update configuration:
+Or manually create the workspace `.env`:
+```bash
+cat > /mnt/server/moltbot/workspace/.env << 'EOF'
+SONARR_API_KEY=your_key_here
+SONARR_URL=http://172.18.0.1:8989
+RADARR_API_KEY=your_key_here
+RADARR_URL=http://172.18.0.1:7878
+JELLYFIN_API_KEY=your_key_here
+JELLYFIN_URL=http://172.18.0.1:8096
+EOF
+```
+
+The WhatsApp allowlist is configured in `openclaw.json`:
 ```json
 {
   "channels": {
     "whatsapp": {
-      "allowFrom": ["+12345678901"],  # Your WhatsApp number
-      "requireMention": false
-    }
-  },
-  "integrations": {
-    "sonarr": {
-      "url": "http://sonarr:8989",
-      "apiKey": "YOUR_SONARR_API_KEY"
-    },
-    "radarr": {
-      "url": "http://radarr:7878",
-      "apiKey": "YOUR_RADARR_API_KEY"
-    },
-    "jellyfin": {
-      "url": "http://jellyfin:8096",
-      "apiKey": "YOUR_JELLYFIN_API_KEY"
+      "selfChatMode": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": ["+12345678901"]
     }
   }
 }
@@ -272,8 +266,8 @@ Update configuration:
 Secure permissions and restart:
 ```bash
 chmod 700 /mnt/server/moltbot/config
-chmod 600 /mnt/server/moltbot/config/moltbot.json
-chmod 600 /mnt/server/moltbot/config/credentials/*.json
+chmod 600 /mnt/server/moltbot/config/openclaw.json
+chmod 600 /mnt/server/moltbot/workspace/.env
 make restart SERVICE=moltbot-gateway
 ```
 
@@ -428,10 +422,9 @@ docker compose logs -f sonarr
 ├── radarr/config/      # Radarr config
 ├── jellyfin/config/    # Jellyfin config
 ├── qbittorrent/config/ # qBittorrent config
-├── moltbot/            # Moltbot config
-│   ├── config/
-│   ├── workspace/
-│   └── data/
+├── moltbot/            # Moltbot
+│   ├── config/         # State dir (openclaw.json, credentials, sessions)
+│   └── workspace/      # Bot workspace (.env with API keys, memory files)
 └── [service]/          # Other service configs
 ```
 
@@ -557,7 +550,7 @@ make moltbot-auth-refresh
 **Bot not responding:**
 ```bash
 # Check allowlist
-cat /mnt/server/moltbot/config/moltbot.json | grep allowFrom
+cat /mnt/server/moltbot/config/openclaw.json | grep allowFrom
 # Verify your number is there: +12345678901
 
 # Check logs
@@ -569,11 +562,11 @@ make restart SERVICE=moltbot-gateway
 
 **Media commands not working:**
 ```bash
-# Test API connectivity
-docker compose exec moltbot-gateway curl "http://sonarr:8989/api/v3/system/status?apikey=YOUR_KEY"
+# Test API connectivity (bot uses Docker bridge gateway IP)
+docker compose exec moltbot-gateway curl "http://172.18.0.1:8989/api/v3/system/status?apikey=YOUR_KEY"
 
-# Verify configuration
-cat /mnt/server/moltbot/config/moltbot.json
+# Verify API keys
+cat /mnt/server/moltbot/workspace/.env
 
 # Restart after config changes
 make restart SERVICE=moltbot-gateway
