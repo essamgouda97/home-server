@@ -151,9 +151,9 @@ make moltbot-auth-claude     # Login with Claude Pro account
 make moltbot-auth-status     # Check authentication status
 make moltbot-auth-refresh    # Refresh session (every 30 days)
 
-# WhatsApp
-make moltbot-whatsapp        # Setup WhatsApp channel
-make moltbot-whatsapp-login  # Re-login to WhatsApp
+# Telegram
+make moltbot-telegram        # Setup Telegram channel
+make moltbot-telegram-login  # Re-login to Telegram
 
 # Management
 make start-moltbot           # Start moltbot gateway
@@ -166,12 +166,12 @@ make moltbot-rebuild         # Rebuild from scratch
 
 ## Moltbot AI Assistant
 
-Control your media server via WhatsApp using Claude AI.
+Control your media server via Telegram using Claude AI.
 
 ### Features
 
 - 🤖 **AI-Powered** - Powered by Anthropic Claude
-- 💬 **WhatsApp Integration** - Control via WhatsApp messages
+- 💬 **Telegram Integration** - Control via Telegram messages
 - 🎬 **Media Server Access** - Full API access to Sonarr/Radarr/Jellyfin
 - 🔐 **Secure** - Local-only UI, encrypted sessions
 - 📁 **File Operations** - Workspace for file management
@@ -191,13 +191,17 @@ Control your media server via WhatsApp using Claude AI.
 # 1. Create .env with auto-generated token
 make moltbot-env
 
-# 2. Build and configure (includes Claude + WhatsApp setup)
+# 2. Add your Telegram bot token to .env
+nano .env
+# Add your token: TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+
+# 3. Build and configure (includes Claude + Telegram setup)
 make moltbot-setup
 
-# 3. Start gateway
+# 4. Start gateway
 make start-moltbot
 
-# 4. Message the bot on WhatsApp — it will walk you through
+# 5. Message the bot on Telegram — it will walk you through
 #    providing API keys for Sonarr/Radarr/Jellyfin
 ```
 
@@ -211,17 +215,19 @@ make moltbot-env
 nano .env
 # Add your API key: ANTHROPIC_API_KEY=sk-ant-...
 
-# 3. Build and configure
+# 3. Add your Telegram bot token to .env (if not already done)
+# TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+
+# 4. Build and configure
 make moltbot-setup
 
-# 4. Setup WhatsApp
-make moltbot-whatsapp
-# Scan QR code with WhatsApp app
+# 5. Setup Telegram
+make moltbot-telegram
 
-# 5. Start gateway
+# 6. Start gateway
 make start-moltbot
 
-# 6. Message the bot on WhatsApp — provide API keys when asked
+# 7. Message the bot on Telegram — provide API keys when asked
 ```
 
 ### Configuration
@@ -231,9 +237,9 @@ The bot uses two config locations:
 - **Main config**: `/mnt/server/moltbot/config/openclaw.json` — gateway settings, channels, auth
 - **Workspace `.env`**: `/mnt/server/moltbot/workspace/.env` — API keys for media services
 
-API keys are provided to the bot via WhatsApp during the initial conversation. The bot saves them to its workspace `.env` file and uses them to make HTTP calls to your services via the Docker bridge gateway (`172.18.0.1`).
+API keys are provided to the bot via Telegram during the initial conversation. The bot saves them to its workspace `.env` file and uses them to make HTTP calls to your services via the Docker bridge gateway (`172.18.0.1`).
 
-**To provide API keys**, message the bot on WhatsApp with your keys:
+**To provide API keys**, message the bot on Telegram with your keys:
 - **Sonarr**: http://localhost:8989 → Settings → General → API Key
 - **Radarr**: http://localhost:7878 → Settings → General → API Key
 - **Jellyfin**: http://localhost:8096 → Dashboard → API Keys → New
@@ -250,14 +256,13 @@ JELLYFIN_URL=http://172.18.0.1:8096
 EOF
 ```
 
-The WhatsApp allowlist is configured in `openclaw.json`:
+The Telegram allowlist is configured in `openclaw.json`:
 ```json
 {
   "channels": {
-    "whatsapp": {
-      "selfChatMode": true,
+    "telegram": {
       "dmPolicy": "allowlist",
-      "allowFrom": ["+12345678901"]
+      "allowFrom": ["YOUR_TELEGRAM_USER_ID"]
     }
   }
 }
@@ -271,7 +276,7 @@ chmod 600 /mnt/server/moltbot/workspace/.env
 make restart SERVICE=moltbot-gateway
 ```
 
-### Using Moltbot via WhatsApp
+### Using Moltbot via Telegram
 
 **Media Management:**
 ```
@@ -456,6 +461,9 @@ MOLTBOT_GATEWAY_TOKEN=<generate with: openssl rand -hex 32>
 # Option 1: Claude Pro account (leave empty, use: make moltbot-auth-claude)
 # Option 2: API key
 ANTHROPIC_API_KEY=sk-ant-...
+
+# Telegram bot token (from @BotFather)
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 ```
 
 ---
@@ -522,17 +530,19 @@ cat .env
 make moltbot-rebuild
 ```
 
-**WhatsApp not connecting:**
+**Telegram not connecting:**
 ```bash
-# Re-login to WhatsApp
-make moltbot-whatsapp-login
+# Re-login to Telegram
+make moltbot-telegram-login
+
+# Verify bot token is set
+grep TELEGRAM_BOT_TOKEN .env
 
 # Check credentials
 ls -la /mnt/server/moltbot/config/credentials/
 
-# Remove old session and re-add
-rm -rf /mnt/server/moltbot/config/credentials/whatsapp*
-make moltbot-whatsapp
+# Re-add channel
+make moltbot-telegram
 ```
 
 **Claude Pro authentication failed:**
@@ -551,7 +561,7 @@ make moltbot-auth-refresh
 ```bash
 # Check allowlist
 cat /mnt/server/moltbot/config/openclaw.json | grep allowFrom
-# Verify your number is there: +12345678901
+# Verify your Telegram user ID is there
 
 # Check logs
 make moltbot-logs
@@ -699,7 +709,7 @@ make logs SERVICE=name        # View logs
 # Moltbot
 make moltbot-setup           # Initial setup
 make moltbot-auth-claude     # Login with Claude Pro
-make moltbot-whatsapp        # Setup WhatsApp
+make moltbot-telegram        # Setup Telegram
 make moltbot-logs            # View logs
 make start-moltbot           # Start moltbot
 

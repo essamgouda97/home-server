@@ -161,16 +161,21 @@ services:
   jellyfin:
     image: ghcr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
+    runtime: nvidia
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
       - UMASK_SET=022
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
     volumes:
       - /mnt/server/jellyfin/config:/config
       - /mnt/server/media/tvshows:/data/tvshows
       - /mnt/server/media/movies:/data/movies
       - /mnt/server/media/m3u:/data/m3u
+    devices:
+      - /dev/dri:/dev/dri
     ports:
       - "8096:8096"
     networks:
@@ -225,12 +230,14 @@ services:
       - MOLTBOT_GATEWAY_BIND=127.0.0.1
       - MOLTBOT_GATEWAY_PORT=18789
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - CLAWDBOT_STATE_DIR=/home/node/.openclaw
 
     volumes:
       - /mnt/server/moltbot/config:/home/node/.openclaw:rw
       - /mnt/server/moltbot/workspace:/home/node/.openclaw/workspace:rw
       - /mnt/server/media:/media:ro
+      - /home/egouda/workspace/home-server:/home/node/home-server:rw
 
     ports:
       - "127.0.0.1:18789:18789"

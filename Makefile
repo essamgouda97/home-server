@@ -285,7 +285,7 @@ moltbot-setup: ## Build image and run onboarding
 	@echo ""
 	@echo "$(BLUE)$(ARROW)$(NC) Next steps:"
 	@echo "  1. $(CYAN)make moltbot-auth-claude$(NC) - Login with Claude Pro"
-	@echo "  2. $(CYAN)make moltbot-whatsapp$(NC)    - Setup WhatsApp"
+	@echo "  2. $(CYAN)make moltbot-telegram$(NC)   - Setup Telegram"
 	@echo "  3. $(CYAN)make start-moltbot$(NC)       - Start the bot"
 	@echo ""
 
@@ -366,22 +366,22 @@ moltbot-auth-logout: ## Logout from Claude
 	$(call success,Logged out successfully!)
 	echo ""
 
-moltbot-whatsapp: ## Setup WhatsApp channel
-	$(call section,WhatsApp Setup)
-	$(call info,Starting WhatsApp setup...)
+moltbot-telegram: ## Setup Telegram channel
+	$(call section,Telegram Setup)
+	$(call info,Starting Telegram setup...)
 	echo ""
-	$(call info,Scan the QR code with WhatsApp on your phone)
+	$(call info,Ensure TELEGRAM_BOT_TOKEN is set in .env)
 	echo ""
 	docker compose run --rm moltbot-cli channels add
 	echo ""
-	$(call success,WhatsApp connected!)
+	$(call success,Telegram connected!)
 	echo ""
 
-moltbot-whatsapp-login: ## Re-login to WhatsApp
-	$(call section,WhatsApp Re-login)
-	$(call info,Re-connecting to WhatsApp...)
+moltbot-telegram-login: ## Re-login to Telegram
+	$(call section,Telegram Re-login)
+	$(call info,Re-connecting to Telegram...)
 	docker compose run --rm moltbot-cli channels login
-	$(call success,WhatsApp reconnected!)
+	$(call success,Telegram reconnected!)
 	echo ""
 
 moltbot-build: ## Build moltbot image (included in setup)
@@ -452,7 +452,7 @@ setup: setup-dirs ## Initial server setup
 	echo "  1. $(CYAN)make moltbot-env$(NC)      - Create .env"
 	echo "  2. $(CYAN)make moltbot-setup$(NC)    - Build & configure"
 	echo "  3. $(CYAN)make moltbot-auth-claude$(NC) - Login"
-	echo "  4. $(CYAN)make moltbot-whatsapp$(NC) - Setup WhatsApp"
+	echo "  4. $(CYAN)make moltbot-telegram$(NC) - Setup Telegram"
 	echo "  5. $(CYAN)make start-moltbot$(NC)    - Start bot"
 	echo ""
 
