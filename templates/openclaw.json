@@ -1,0 +1,51 @@
+{
+  "tools": {
+    "exec": {
+      "host": "gateway",
+      "security": "full",
+      "ask": "off"
+    },
+    "elevated": {
+      "enabled": true,
+      "allowFrom": { "telegram": ["__TELEGRAM_CHAT_ID__"] }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "sandbox": { "mode": "off" },
+      "workspace": "__WORKSPACE_DIR__",
+      "compaction": { "mode": "safeguard" },
+      "maxConcurrent": 4,
+      "subagents": { "maxConcurrent": 8 }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "dmPolicy": "allowlist",
+      "allowFrom": ["__TELEGRAM_CHAT_ID__"],
+      "groupPolicy": "allowlist",
+      "streamMode": "partial"
+    }
+  },
+  "gateway": {
+    "port": "__PORT__",
+    "mode": "local",
+    "bind": "loopback"
+  },
+  "plugins": {
+    "entries": {
+      "telegram": { "enabled": true },
+      "whatsapp": { "enabled": false }
+    }
+  },
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "boot-md": { "enabled": true },
+        "command-logger": { "enabled": true },
+        "session-memory": { "enabled": true }
+      }
+    }
+  }
+}

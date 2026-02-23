@@ -1,0 +1,23 @@
+[Unit]
+Description=OpenClaw Agent — %i
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/workspace/home-server/agents/%i/.env
+Environment=OPENCLAW_STATE_DIR=/mnt/server/agents/%i/config
+Environment=PATH=__NODE_BIN_DIR__:/usr/local/bin:/usr/bin:/bin
+ExecStart=__OPENCLAW_BIN__ gateway
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/mnt/server %h/workspace/home-server/agents
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

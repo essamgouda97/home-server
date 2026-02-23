@@ -1,6 +1,6 @@
-# Home Server - Docker Media Stack
+# Home Server - Docker Media Stack + AI Agents
 
-A complete media server with automated downloading, streaming, and AI assistant integration.
+A complete media server with automated downloading, streaming, and AI agent support via OpenClaw.
 
 **Inspired by:** https://github.com/GreenFrogSB/LMDS
 
@@ -10,9 +10,8 @@ A complete media server with automated downloading, streaming, and AI assistant 
 
 - [Quick Start](#quick-start)
 - [Services Overview](#services-overview)
+- [Agents (AI Assistants)](#agents-ai-assistants)
 - [Using the Makefile](#using-the-makefile)
-- [Moltbot AI Assistant](#moltbot-ai-assistant)
-- [Service Management](#service-management)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 - [Backup & Maintenance](#backup--maintenance)
@@ -28,7 +27,7 @@ A complete media server with automated downloading, streaming, and AI assistant 
 cd /home/egouda/workspace/home-server
 
 # 2. Create required directories
-make setup-dirs
+make setup
 
 # 3. Setup VPN (place your vpn.conf in /mnt/server/vpn/)
 make setup-vpn
@@ -43,8 +42,7 @@ make status
 ### Access Services
 
 ```bash
-# Show all service URLs
-make urls
+make urls    # Show all service URLs
 ```
 
 Key services:
@@ -88,20 +86,155 @@ Key services:
 |---------|------|---------|
 | **VPN Gateway** | - | OpenVPN client for qBittorrent |
 | **Portainer** | 9000 | Docker container management |
-| **Moltbot** | 18789 | AI assistant (localhost only) |
+
+---
+
+## Agents (AI Assistants)
+
+Agents are independent AI assistant instances powered by Claude via [OpenClaw](https://github.com/openclaw/openclaw). Each agent has its own identity, personality, Telegram bot, workspace, and memory — and runs as a systemd user service on the host.
+
+### Architecture
+
+```
+Docker (docker-compose.yml)          Host (systemd user services)
+┌──────────────────────────┐        ┌──────────────────────────┐
+│ sonarr, radarr, jellyfin │        │ openclaw@servo           │
+│ qbittorrent, prowlarr    │        │ openclaw@jarvis          │
+│ vpn, portainer, ...      │        │ openclaw@<next>          │
+└──────────────────────────┘        └──────────────────────────┘
+      Media stack                      AI agents (OpenClaw)
+```
+
+```
+templates/                      # Git-tracked starter files
+  workspace/                    # SOUL.md, AGENTS.md, BOOTSTRAP.md, etc.
+  env.template                  # .env skeleton
+  openclaw.json                 # Base OpenClaw config
+  exec-approvals.json           # Command allowlist
+  systemd/openclaw@.service     # Systemd unit template
+
+agents/                         # .gitignored — personal data stays local
+  servo/
+    .env                        # Agent-specific tokens + port
+    workspace/                  # Personality files, memories, tools
+  jarvis/
+    .env
+    workspace/
+```
+
+### Creating a New Agent
+
+```bash
+# 1. Install OpenClaw on host (one-time)
+make install-openclaw
+
+# 2. Scaffold a new agent from templates
+make new-agent NAME=jarvis
+
+# 3. Add Telegram bot token (get one from @BotFather)
+nano agents/jarvis/.env
+
+# 4. Set your Telegram chat ID in the config
+nano /mnt/server/agents/jarvis/config/openclaw.json
+
+# 5. Onboard the agent
+make agent-setup AGENT=jarvis
+
+# 6. Authenticate with Claude Pro
+make agent-auth AGENT=jarvis
+
+# 7. Connect Telegram
+make agent-telegram AGENT=jarvis
+
+# 8. Start it
+make start-agent AGENT=jarvis
+```
+
+On first boot, the agent reads `BOOTSTRAP.md`, starts a conversation with you, discovers its name and personality, and fills in its `IDENTITY.md` and `USER.md`.
+
+### Agent Commands
+
+```bash
+# Lifecycle
+make new-agent NAME=jarvis       # Create a new agent
+make start-agent AGENT=jarvis    # Start an agent
+make stop-agent AGENT=jarvis     # Stop an agent
+make restart-agent AGENT=jarvis  # Restart an agent
+make start-agents                # Start all agents
+make stop-agents                 # Stop all agents
+
+# Setup & Auth
+make install-openclaw            # Install OpenClaw (one-time)
+make update-openclaw             # Update to latest version
+make agent-setup AGENT=jarvis    # Run onboarding
+make agent-auth AGENT=jarvis     # Login with Claude Pro
+make agent-auth-status AGENT=x   # Check auth status
+make agent-auth-refresh AGENT=x  # Refresh session
+make agent-telegram AGENT=jarvis # Setup Telegram channel
+
+# Monitoring
+make list-agents                 # List all agents + status + ports
+make agent-logs AGENT=jarvis     # View agent logs (journalctl)
+make agent-status AGENT=jarvis   # Detailed systemd status
+make backup-agents               # Backup all agent data
+```
+
+### Port Allocation
+
+Each agent gets a unique gateway port:
+
+| Agent | Port |
+|-------|------|
+| servo | 18789 |
+| jarvis | 18889 |
+| next | 18989 |
+
+### Security
+
+Agents are sandboxed using an exec allowlist (`exec-approvals.json`):
+
+**Allowed:** `docker` (all subcommands), `make`, `git`, `curl`, `wget`, `systemctl`, `journalctl`, `npm`, `npx`, `python3`, plus read-only safeBins (`ls`, `cat`, `df`, `free`, `ps`, `jq`, etc.)
+
+**Blocked:** `rm`, `sudo`, `mkfs`, `dd`, `fdisk`, `chmod`, `chown`, `reboot`, `shutdown`, `iptables`, shell chaining with unallowed binaries
+
+Systemd hardening: `NoNewPrivileges=true`, `ProtectSystem=strict`, `ProtectHome=read-only`, `PrivateTmp=true`
+
+### Privacy
+
+- `agents/` is **gitignored** — personal data, tokens, and memories never leave your machine
+- `templates/` is **git-tracked** — safe generic starter files
+- Root `.env` holds only `ANTHROPIC_API_KEY` (shared across all agents)
+- Each agent's `.env` holds its own `TELEGRAM_BOT_TOKEN` and `OPENCLAW_GATEWAY_TOKEN`
+- Agent state lives in `/mnt/server/agents/<name>/config/`
+
+### Customizing an Agent
+
+Before first boot, edit the workspace files in `agents/<name>/workspace/`:
+
+- **SOUL.md** — Core personality and values
+- **AGENTS.md** — Operational behavior and memory rules
+- **BOOTSTRAP.md** — First-run onboarding script (deleted after use)
+- **TOOLS.md** — Environment-specific notes (APIs, paths, safety rules)
+- **HEARTBEAT.md** — Periodic task checklist
+
+After onboarding, the agent maintains:
+- **IDENTITY.md** — Name, creature type, vibe, emoji
+- **USER.md** — Info about its human
+- **MEMORY.md** — Long-term curated memory
+- **memory/** — Daily logs
 
 ---
 
 ## Using the Makefile
 
-The Makefile provides convenient commands for managing your entire server.
+The Makefile provides convenient commands for managing your entire server. Run `make help` for the full list.
 
 ### Basic Commands
 
 ```bash
 make help              # Show all available commands
-make status            # Show status of all services
-make start             # Start all services
+make status            # Show status of all services + agents
+make start             # Start all services (Docker infra + agents)
 make stop              # Stop all services
 make restart           # Restart all services
 make logs              # View logs (all services)
@@ -114,7 +247,7 @@ make logs SERVICE=sonarr  # View specific service logs
 make start-media       # Start Sonarr, Radarr, Jellyfin
 make start-downloaders # Start qBittorrent, NZBGet
 make start-indexers    # Start Prowlarr, Jackett
-make start-moltbot     # Start moltbot AI assistant
+make start-agents      # Start all AI agents
 ```
 
 ### Individual Services
@@ -122,8 +255,8 @@ make start-moltbot     # Start moltbot AI assistant
 ```bash
 make restart SERVICE=sonarr  # Restart specific service
 make update SERVICE=radarr   # Update and restart service
-make sonarr-logs            # View Sonarr logs
-make radarr-restart         # Restart Radarr
+make sonarr-logs             # View Sonarr logs
+make radarr-restart          # Restart Radarr
 ```
 
 ### Maintenance
@@ -131,281 +264,11 @@ make radarr-restart         # Restart Radarr
 ```bash
 make update            # Update all services
 make backup            # Backup all configurations
-make backup-moltbot    # Backup moltbot only
+make backup-agents     # Backup all agent data
 make stats             # Show resource usage
 make health            # Check container health
 make vpn-check         # Verify VPN connection
 make disk-usage        # Show disk usage
-```
-
-### Moltbot Commands
-
-```bash
-# Setup & Configuration
-make moltbot-env             # Create .env with auto-generated token
-make moltbot-setup           # Build image and run onboarding
-make moltbot-onboard         # Re-run onboarding wizard
-
-# Authentication (Claude Pro)
-make moltbot-auth-claude     # Login with Claude Pro account
-make moltbot-auth-status     # Check authentication status
-make moltbot-auth-refresh    # Refresh session (every 30 days)
-
-# Telegram
-make moltbot-telegram        # Setup Telegram channel
-make moltbot-telegram-login  # Re-login to Telegram
-
-# Management
-make start-moltbot           # Start moltbot gateway
-make moltbot-logs            # View logs
-make moltbot-verify          # Run verification script
-make moltbot-rebuild         # Rebuild from scratch
-```
-
----
-
-## Moltbot AI Assistant
-
-Control your media server via Telegram using Claude AI.
-
-### Features
-
-- 🤖 **AI-Powered** - Powered by Anthropic Claude
-- 💬 **Telegram Integration** - Control via Telegram messages
-- 🎬 **Media Server Access** - Full API access to Sonarr/Radarr/Jellyfin
-- 🔐 **Secure** - Local-only UI, encrypted sessions
-- 📁 **File Operations** - Workspace for file management
-
-### Authentication Options
-
-| Method | Cost | Setup Complexity | Best For |
-|--------|------|------------------|----------|
-| **Claude Pro Account** | $20/month (existing sub) | Easy (browser login) | Personal use |
-| **API Key** | Pay-per-token (~$3-15/M tokens) | Easy (copy key) | High volume |
-
-**Recommendation:** Use Claude Pro if you already have a subscription.
-
-### Quick Setup (Claude Pro Account)
-
-```bash
-# 1. Create .env with auto-generated token
-make moltbot-env
-
-# 2. Add your Telegram bot token to .env
-nano .env
-# Add your token: TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-
-# 3. Build and configure (includes Claude + Telegram setup)
-make moltbot-setup
-
-# 4. Start gateway
-make start-moltbot
-
-# 5. Message the bot on Telegram — it will walk you through
-#    providing API keys for Sonarr/Radarr/Jellyfin
-```
-
-### Quick Setup (API Key)
-
-```bash
-# 1. Create .env with auto-generated token
-make moltbot-env
-
-# 2. Add your Anthropic API key to .env
-nano .env
-# Add your API key: ANTHROPIC_API_KEY=sk-ant-...
-
-# 3. Add your Telegram bot token to .env (if not already done)
-# TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-
-# 4. Build and configure
-make moltbot-setup
-
-# 5. Setup Telegram
-make moltbot-telegram
-
-# 6. Start gateway
-make start-moltbot
-
-# 7. Message the bot on Telegram — provide API keys when asked
-```
-
-### Configuration
-
-The bot uses two config locations:
-
-- **Main config**: `/mnt/server/moltbot/config/openclaw.json` — gateway settings, channels, auth
-- **Workspace `.env`**: `/mnt/server/moltbot/workspace/.env` — API keys for media services
-
-API keys are provided to the bot via Telegram during the initial conversation. The bot saves them to its workspace `.env` file and uses them to make HTTP calls to your services via the Docker bridge gateway (`172.18.0.1`).
-
-**To provide API keys**, message the bot on Telegram with your keys:
-- **Sonarr**: http://localhost:8989 → Settings → General → API Key
-- **Radarr**: http://localhost:7878 → Settings → General → API Key
-- **Jellyfin**: http://localhost:8096 → Dashboard → API Keys → New
-
-Or manually create the workspace `.env`:
-```bash
-cat > /mnt/server/moltbot/workspace/.env << 'EOF'
-SONARR_API_KEY=your_key_here
-SONARR_URL=http://172.18.0.1:8989
-RADARR_API_KEY=your_key_here
-RADARR_URL=http://172.18.0.1:7878
-JELLYFIN_API_KEY=your_key_here
-JELLYFIN_URL=http://172.18.0.1:8096
-EOF
-```
-
-The Telegram allowlist is configured in `openclaw.json`:
-```json
-{
-  "channels": {
-    "telegram": {
-      "dmPolicy": "allowlist",
-      "allowFrom": ["YOUR_TELEGRAM_USER_ID"]
-    }
-  }
-}
-```
-
-Secure permissions and restart:
-```bash
-chmod 700 /mnt/server/moltbot/config
-chmod 600 /mnt/server/moltbot/config/openclaw.json
-chmod 600 /mnt/server/moltbot/workspace/.env
-make restart SERVICE=moltbot-gateway
-```
-
-### Using Moltbot via Telegram
-
-**Media Management:**
-```
-Add Breaking Bad to Sonarr
-List all shows in Sonarr
-What's downloading right now?
-Add The Matrix to Radarr
-What movies are downloading?
-Check qBittorrent download progress
-```
-
-**System Commands:**
-```
-help
-status
-workspace
-```
-
-**Natural Language:**
-```
-Add The Wire to my TV show collection
-How much storage am I using?
-What's the status of my Jellyfin library?
-```
-
-### Access Control UI
-
-**From server:**
-```bash
-http://localhost:18789/
-```
-
-**From remote machine:**
-```bash
-# Create SSH tunnel
-ssh -L 18789:localhost:18789 egouda@<server-ip>
-
-# Then browse to: http://localhost:18789/
-# Enter gateway token from .env
-```
-
-### Moltbot Maintenance
-
-**Check authentication (Claude Pro):**
-```bash
-make moltbot-auth-status
-```
-
-**Refresh session (every 30 days):**
-```bash
-make moltbot-auth-refresh
-```
-
-**Re-login if expired:**
-```bash
-make moltbot-auth-claude
-```
-
-**View logs:**
-```bash
-make moltbot-logs
-```
-
-**Verify installation:**
-```bash
-make moltbot-verify
-```
-
----
-
-## Service Management
-
-### Starting Services
-
-```bash
-# All services
-make start
-
-# Service groups
-make start-media       # Sonarr, Radarr, Jellyfin
-make start-downloaders # qBittorrent, NZBGet
-make start-indexers    # Prowlarr, Jackett
-
-# Individual service
-make restart SERVICE=sonarr
-docker compose up -d sonarr  # Alternative
-```
-
-### Stopping Services
-
-```bash
-# All services
-make stop
-
-# Service groups
-make stop-media
-make stop-downloaders
-
-# Individual service
-make stop SERVICE=sonarr
-docker compose stop sonarr  # Alternative
-```
-
-### Updating Services
-
-```bash
-# Update all services
-make update
-
-# Update specific service
-make update SERVICE=sonarr
-
-# Manual update
-docker compose pull sonarr
-docker compose up -d sonarr
-```
-
-### Viewing Logs
-
-```bash
-# All services
-make logs
-
-# Specific service
-make logs SERVICE=sonarr
-make sonarr-logs  # Shorthand
-
-# Follow logs
-docker compose logs -f sonarr
 ```
 
 ---
@@ -415,22 +278,31 @@ docker compose logs -f sonarr
 ### Directory Structure
 
 ```
+/home/egouda/workspace/home-server/
+├── docker-compose.yml              # Media stack services (Docker)
+├── .env                            # Shared secrets (ANTHROPIC_API_KEY)
+├── Makefile                        # All management commands
+├── templates/
+│   ├── workspace/                  # Starter personality files
+│   ├── env.template                # Agent .env skeleton
+│   ├── openclaw.json               # Base OpenClaw config
+│   ├── exec-approvals.json         # Command allowlist
+│   └── systemd/openclaw@.service   # Systemd unit template
+├── agents/                         # Per-agent config + workspace (gitignored)
+│   └── servo/
+│       ├── .env                    # Agent tokens + port
+│       └── workspace/              # Personality, memory, tools
+└── scripts/
+    ├── setup-host.sh               # First-time host setup
+    ├── new-agent.sh                # Scaffold a new agent
+    └── agent-ctl.sh                # Agent CLI wrapper
+
 /mnt/server/
-├── downloads/          # Download client output
-│   ├── complete/
-│   └── incomplete/
-├── media/              # Media library
-│   ├── movies/
-│   ├── tvshows/
-│   └── m3u/
-├── sonarr/data/        # Sonarr config
-├── radarr/config/      # Radarr config
-├── jellyfin/config/    # Jellyfin config
-├── qbittorrent/config/ # qBittorrent config
-├── moltbot/            # Moltbot
-│   ├── config/         # State dir (openclaw.json, credentials, sessions)
-│   └── workspace/      # Bot workspace (.env with API keys, memory files)
-└── [service]/          # Other service configs
+├── agents/
+│   └── servo/config/               # Agent state (credentials, sessions, openclaw.json)
+├── media/                          # Media library
+├── downloads/                      # Download client output
+└── [service]/                      # Other service configs
 ```
 
 ### VPN Setup
@@ -441,30 +313,32 @@ docker compose logs -f sonarr
 
 See: https://greenfrognest.com/LMDSVPN.php#vpncontainer
 
-### First-Time Configuration
-
-1. **Configure Prowlarr** with indexers
-2. **Connect Sonarr** and **Radarr** to Prowlarr
-3. **Add download clients** (qBittorrent, NZBGet) to Sonarr/Radarr
-4. **Configure Jellyfin** media libraries
-5. **Connect Jellyseerr** to Jellyfin
-
 ### Environment Variables
 
-Located in `.env` (not tracked in git):
-
+**Root `.env`** (shared across all agents):
 ```env
-# Moltbot gateway token
-MOLTBOT_GATEWAY_TOKEN=<generate with: openssl rand -hex 32>
-
 # Anthropic authentication (choose one):
-# Option 1: Claude Pro account (leave empty, use: make moltbot-auth-claude)
+# Option 1: Claude Pro account (leave empty, use: make agent-auth AGENT=name)
 # Option 2: API key
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Telegram bot token (from @BotFather)
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+ANTHROPIC_API_KEY=
 ```
+
+**Agent `.env`** (`agents/<name>/.env`):
+```env
+OPENCLAW_GATEWAY_TOKEN=<auto-generated>
+TELEGRAM_BOT_TOKEN=<from @BotFather>
+OPENCLAW_PORT=18789
+OPENCLAW_STATE_DIR=/mnt/server/agents/<name>/config
+```
+
+### Authentication
+
+| Method | Cost | Setup | Best For |
+|--------|------|-------|----------|
+| **Claude Pro/Max** | $20-100/month (existing sub) | `make agent-auth AGENT=name` | Personal use |
+| **API Key** | Pay-per-token | Add to root `.env` | High volume |
+
+OpenClaw works with Claude Pro/Max via OAuth — no API key needed for personal use.
 
 ---
 
@@ -474,138 +348,71 @@ TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 
 **Service won't start:**
 ```bash
-# Check logs
 make logs SERVICE=servicename
-
-# Check port conflicts
 sudo netstat -tlnp | grep PORT
-
-# Restart service
 make restart SERVICE=servicename
 ```
 
 **All services down:**
 ```bash
-# Check Docker status
-systemctl status docker
-
-# Restart Docker
 sudo systemctl restart docker
-
-# Start services
 make start
 ```
 
 ### VPN Issues
 
-**Check VPN connection:**
 ```bash
-make vpn-check
-# Should show your VPN IP, not your real IP
-```
-
-**VPN not connecting:**
-```bash
-# Check logs
-make logs SERVICE=vpn
-
-# Verify config file
-ls -la /mnt/server/vpn/
-
-# Restart VPN
+make vpn-check          # Should show VPN IP, not your real IP
+make logs SERVICE=vpn   # Check VPN logs
 make restart SERVICE=vpn
 ```
 
-### Moltbot Issues
+### Agent Issues
 
-**Container won't start:**
+**Agent won't start:**
 ```bash
-# Check logs
-make moltbot-logs
-
-# Verify .env exists
-cat .env
-
-# Rebuild image
-make moltbot-rebuild
+make agent-logs AGENT=name        # Check journalctl logs
+make agent-status AGENT=name      # Detailed systemd status
+make agent-auth-status AGENT=name # Check auth
 ```
 
 **Telegram not connecting:**
 ```bash
-# Re-login to Telegram
-make moltbot-telegram-login
-
-# Verify bot token is set
-grep TELEGRAM_BOT_TOKEN .env
-
-# Check credentials
-ls -la /mnt/server/moltbot/config/credentials/
+# Verify token is set
+grep TELEGRAM_BOT_TOKEN agents/<name>/.env
 
 # Re-add channel
-make moltbot-telegram
+make agent-telegram AGENT=name
 ```
 
-**Claude Pro authentication failed:**
+**Claude Pro auth expired:**
 ```bash
-# Check status
-make moltbot-auth-status
-
-# Re-login
-make moltbot-auth-claude
-
-# If session expired (after 30 days)
-make moltbot-auth-refresh
+make agent-auth-status AGENT=name
+make agent-auth-refresh AGENT=name   # Try refresh first
+make agent-auth AGENT=name           # Full re-login if needed
 ```
 
-**Bot not responding:**
+**Bot not responding to messages:**
 ```bash
-# Check allowlist
-cat /mnt/server/moltbot/config/openclaw.json | grep allowFrom
-# Verify your Telegram user ID is there
+# Check allowlist in agent config
+cat /mnt/server/agents/<name>/config/openclaw.json | grep allowFrom
 
 # Check logs
-make moltbot-logs
+make agent-logs AGENT=name
 
 # Restart
-make restart SERVICE=moltbot-gateway
-```
-
-**Media commands not working:**
-```bash
-# Test API connectivity (bot uses Docker bridge gateway IP)
-docker compose exec moltbot-gateway curl "http://172.18.0.1:8989/api/v3/system/status?apikey=YOUR_KEY"
-
-# Verify API keys
-cat /mnt/server/moltbot/workspace/.env
-
-# Restart after config changes
-make restart SERVICE=moltbot-gateway
+make restart-agent AGENT=name
 ```
 
 ### Permission Errors
 
 ```bash
 # Fix ownership (services use PUID=1000)
-sudo chown -R 1000:1000 /mnt/server/servicename/
+sudo chown -R 1000:1000 /mnt/server/agents/<name>/
 
-# Fix moltbot permissions
-chmod 700 /mnt/server/moltbot/config
-chmod 600 /mnt/server/moltbot/config/moltbot.json
-chmod 600 /mnt/server/moltbot/config/credentials/*.json
-```
-
-### Network Issues
-
-```bash
-# Check network exists
-docker network ls | grep proxy
-
-# Inspect network
-docker network inspect home-server_proxy
-
-# Recreate network
-make stop
-make start
+# Fix agent config permissions
+chmod 700 /mnt/server/agents/<name>/config
+chmod 600 /mnt/server/agents/<name>/config/openclaw.json
 ```
 
 ---
@@ -615,18 +422,8 @@ make start
 ### Backups
 
 ```bash
-# Backup everything
-make backup
-
-# Backup moltbot only
-make backup-moltbot
-
-# Manual backup
-tar -czf backup-$(date +%Y%m%d).tar.gz \
-  /mnt/server/*/config \
-  /mnt/server/*/data \
-  docker-compose.yml \
-  .env
+make backup            # Backup all service configs
+make backup-agents     # Backup all agent data + workspaces
 ```
 
 Backups are stored in `backups/` directory.
@@ -634,96 +431,94 @@ Backups are stored in `backups/` directory.
 ### Monitoring
 
 ```bash
-# Resource usage
-make stats
-
-# Health status
-make health
-
-# Disk usage
-make disk-usage
-
-# VPN status
-make vpn-check
+make stats             # Resource usage
+make health            # Container health
+make disk-usage        # Show disk usage
+make vpn-check         # Check VPN connection
+make dashboard         # Quick overview
 ```
 
 ### Cleanup
 
 ```bash
-# Remove unused Docker resources
-make prune
-
-# Clean Docker logs
-make clean-logs
-
-# Stop and remove everything (⚠️ DESTRUCTIVE)
-make clean
+make prune             # Remove unused Docker resources
+make clean-logs        # Clean Docker logs
+make clean             # Stop and remove everything (DESTRUCTIVE)
 ```
 
 ### Updates
 
 ```bash
-# Update all services
-make update
+make update                    # Update all service images
+make update SERVICE=sonarr     # Update specific service
+make update-openclaw           # Update OpenClaw to latest
+```
 
-# Update specific service
-make update SERVICE=sonarr
+---
 
-# Update moltbot
-make moltbot-rebuild
-make start-moltbot
+## Quick Reference
+
+```bash
+# Infrastructure
+make start                       # Start everything
+make stop                        # Stop everything
+make status                      # Service status (Docker + agents)
+make urls                        # All service URLs
+
+# Agents
+make install-openclaw            # Install OpenClaw (one-time)
+make new-agent NAME=jarvis       # Create agent
+make start-agent AGENT=jarvis    # Start agent
+make stop-agent AGENT=jarvis     # Stop agent
+make list-agents                 # List all agents
+make agent-logs AGENT=jarvis     # View logs
+
+# Maintenance
+make update                      # Update services
+make backup                      # Backup configs
+make backup-agents               # Backup agents
+make health                      # Health check
 ```
 
 ---
 
 ## Network Architecture
 
-- **proxy network** (172.18.0.0/24) - All services communicate here
-- **VPN gateway** - qBittorrent traffic routed through VPN
-- **Localhost binding** - Moltbot UI only accessible via 127.0.0.1
+- **proxy network** (172.18.0.0/24) — All Docker services communicate here
+- **VPN gateway** — qBittorrent traffic routed through VPN
+- **Agent loopback** — Agent gateway UIs only accessible via 127.0.0.1
+- **Localhost binding** — SSH tunnel required for remote access
 
 ---
 
 ## Security Notes
 
-- ✅ qBittorrent bound to VPN (traffic stops if VPN disconnects)
-- ✅ Moltbot control UI only on localhost (SSH tunnel required)
-- ✅ All services use non-root users (PUID/PGID)
-- ✅ Credentials stored in /mnt/server/ (not in git)
-- ✅ .env file excluded from version control
-- ✅ Moltbot: no-new-privileges, minimal capabilities
-- ✅ Media directories mounted read-only (except workspace)
+- qBittorrent bound to VPN (traffic stops if VPN disconnects)
+- Agent UIs only on localhost (SSH tunnel required for remote)
+- All Docker services use non-root users (PUID/PGID)
+- Agent secrets in per-agent `.env` files (gitignored)
+- Root `.env` excluded from version control
+- Agents run with systemd hardening (NoNewPrivileges, ProtectSystem, ProtectHome)
+- Agent exec sandboxed via allowlist — only approved binaries can run
+- Media directories accessible but destructive commands blocked
 
 ---
 
-## Common Commands Quick Reference
+## Reproducibility
+
+Clone the repo and go:
 
 ```bash
-# Service Management
-make start                    # Start all services
-make stop                     # Stop all services
-make restart SERVICE=name     # Restart specific service
-make status                   # Show service status
-make logs SERVICE=name        # View logs
-
-# Moltbot
-make moltbot-setup           # Initial setup
-make moltbot-auth-claude     # Login with Claude Pro
-make moltbot-telegram        # Setup Telegram
-make moltbot-logs            # View logs
-make start-moltbot           # Start moltbot
-
-# Maintenance
-make update                  # Update all services
-make backup                  # Backup configurations
-make stats                   # Resource usage
-make health                  # Container health
-make vpn-check              # Check VPN connection
-
-# Monitoring
-make urls                    # Show all service URLs
-make disk-usage             # Show disk usage
-docker compose ps           # List containers
+git clone <repo-url> && cd home-server
+make install-openclaw              # Install OpenClaw on host
+make setup                         # Create directories
+make new-agent NAME=servo          # Scaffold an agent
+# Edit agents/servo/.env with TELEGRAM_BOT_TOKEN
+# Edit /mnt/server/agents/servo/config/openclaw.json with TELEGRAM_CHAT_ID
+make agent-setup AGENT=servo       # Onboard
+make agent-auth AGENT=servo        # Login with Claude Pro
+make agent-telegram AGENT=servo    # Connect Telegram
+make start                         # Start everything
 ```
 
 ---
@@ -735,25 +530,4 @@ docker compose ps           # List containers
 - **Radarr**: https://wiki.servarr.com/radarr
 - **Jellyfin**: https://jellyfin.org/docs/
 - **Prowlarr**: https://wiki.servarr.com/prowlarr
-- **Moltbot**: https://github.com/openclaw/openclaw
-
----
-
-## Support
-
-**For issues:**
-1. Check logs: `make logs SERVICE=name`
-2. Review troubleshooting section above
-3. Check service-specific documentation
-
-**VPN Setup:**
-- https://greenfrognest.com/LMDSVPN.php#vpncontainer
-
-**Moltbot Issues:**
-- Run verification: `make moltbot-verify`
-- Check auth: `make moltbot-auth-status`
-- View logs: `make moltbot-logs`
-
----
-
-**Made with ❤️ for home media enthusiasts**
+- **OpenClaw**: https://github.com/openclaw/openclaw

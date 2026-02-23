@@ -2,13 +2,18 @@
 .DEFAULT_GOAL := help
 .SILENT:
 
+# Compose command — media stack only (agents run as systemd services)
+COMPOSE := docker compose -f docker-compose.yml
+
 # Check if .env exists, create minimal one if not
 .ONESHELL:
 check-env:
 	@if [ ! -f .env ]; then \
-		echo "# Minimal .env - run 'make moltbot-env' for full setup" > .env; \
-		echo "MOLTBOT_GATEWAY_TOKEN=" >> .env; \
-		echo "ANTHROPIC_API_KEY=" >> .env; \
+		echo "ANTHROPIC_API_KEY=" > .env; \
+		echo "" >> .env; \
+		echo "# Shared across all agents" >> .env; \
+		echo "# For Claude Pro: Leave ANTHROPIC_API_KEY empty" >> .env; \
+		echo "# For API: Add your API key (ANTHROPIC_API_KEY=sk-ant-...)" >> .env; \
 	fi
 
 # Colors and formatting
@@ -78,6 +83,22 @@ for i in 1 2 3; do printf "."; sleep 0.3; done
 echo " $(GREEN)Done!$(NC)"
 endef
 
+# Validate AGENT= is set and exists
+define check-agent
+@if [ -z "$(AGENT)" ]; then \
+	echo "$(RED)$(CROSS)$(NC) AGENT= is required" && \
+	echo "$(BLUE)$(ARROW)$(NC) Usage: make $@ AGENT=<name>" && \
+	echo "$(BLUE)$(ARROW)$(NC) Available: $$(ls agents/ 2>/dev/null | tr '\n' ' ')" && \
+	exit 1; \
+fi
+@if [ ! -d "agents/$(AGENT)" ]; then \
+	echo "$(RED)$(CROSS)$(NC) Agent '$(AGENT)' not found" && \
+	echo "$(BLUE)$(ARROW)$(NC) Available: $$(ls agents/ 2>/dev/null | tr '\n' ' ')" && \
+	echo "$(BLUE)$(ARROW)$(NC) Create one: make new-agent NAME=$(AGENT)" && \
+	exit 1; \
+fi
+endef
+
 ##@ General
 
 help: ## Show this help menu with style
@@ -91,14 +112,14 @@ help: ## Show this help menu with style
 			printf "  $(GREEN)%-28s$(NC) %s\n", $$1, $$2 \
 		}' $(MAKEFILE_LIST)
 	echo ""
-	echo "$(DIM)Tip: Use SERVICE=name with restart/logs/update for specific services$(NC)"
+	echo "$(DIM)Tip: Use AGENT=name for agent commands, SERVICE=name for infra$(NC)"
 	echo ""
 
-status: check-env ## Show beautiful service status
-	$(call section,Service Status)
+status: check-env ## Show service status (Docker + agents)
+	$(call section,Docker Services)
 	printf "$(BOLD)%-30s %-15s %-15s$(NC)\n" "SERVICE" "STATE" "STATUS"
 	echo "──────────────────────────────────────────────────────────────────────────"
-	docker compose ps --format '{{.Name}}|{{.State}}|{{.Status}}' 2>/dev/null | while IFS='|' read -r name state status; do \
+	$(COMPOSE) ps --format '{{.Name}}|{{.State}}|{{.Status}}' 2>/dev/null | while IFS='|' read -r name state status; do \
 		if [ "$$state" = "running" ]; then \
 			printf "$(GREEN)●$(NC) %-28s $(GREEN)%-15s$(NC) " "$$name" "$$state"; \
 		elif [ "$$state" = "exited" ]; then \
@@ -117,40 +138,75 @@ status: check-env ## Show beautiful service status
 		fi; \
 	done
 	echo ""
-	RUNNING=$$(docker compose ps --filter "status=running" -q 2>/dev/null | wc -l); \
-	TOTAL=$$(docker compose config --services 2>/dev/null | wc -l); \
+	RUNNING=$$($(COMPOSE) ps --filter "status=running" -q 2>/dev/null | wc -l); \
+	TOTAL=$$($(COMPOSE) config --services 2>/dev/null | wc -l); \
 	if [ $$RUNNING -eq $$TOTAL ]; then \
-		echo "$(GREEN)✓$(NC) All services running ($$RUNNING/$$TOTAL)"; \
+		echo "$(GREEN)✓$(NC) All Docker services running ($$RUNNING/$$TOTAL)"; \
 	else \
-		echo "$(YELLOW)⚠$(NC)  $$RUNNING/$$TOTAL services running"; \
+		echo "$(YELLOW)⚠$(NC)  $$RUNNING/$$TOTAL Docker services running"; \
+	fi
+	echo ""
+	$(call section,Agent Services)
+	@if [ ! -d agents ] || [ -z "$$(ls -A agents 2>/dev/null)" ]; then \
+		echo "$(DIM)No agents found. Create one: make new-agent NAME=servo$(NC)"; \
+	else \
+		printf "$(BOLD)%-15s %-12s %-10s$(NC)\n" "AGENT" "STATUS" "PORT"; \
+		echo "─────────────────────────────────────────"; \
+		for dir in agents/*/; do \
+			[ -d "$$dir" ] || continue; \
+			name=$$(basename "$$dir"); \
+			port=$$(grep -E '^OPENCLAW_PORT=' "$$dir/.env" 2>/dev/null | cut -d= -f2 || echo "?"); \
+			state=$$(systemctl --user is-active "openclaw@$$name" 2>/dev/null || echo "inactive"); \
+			if [ "$$state" = "active" ]; then \
+				printf "$(GREEN)●$(NC) %-13s $(GREEN)%-12s$(NC) %s\n" "$$name" "$$state" "$$port"; \
+			else \
+				printf "$(RED)●$(NC) %-13s $(DIM)%-12s$(NC) %s\n" "$$name" "$$state" "$$port"; \
+			fi; \
+		done; \
 	fi
 	echo ""
 
 ##@ Service Management
 
-start: check-env ## Start all services
+start: check-env ## Start all services (Docker infra + agents)
 	$(call section,Starting Services)
-	$(call info,Starting all services...)
-	docker compose up -d 2>&1 | grep -v "Pulling\|Pulled\|variable is not set" || true
+	$(call info,Starting Docker services...)
+	$(COMPOSE) up -d 2>&1 | grep -v "Pulling\|Pulled\|variable is not set" || true
 	sleep 2
+	@if [ -d agents ] && [ -n "$$(ls -A agents 2>/dev/null)" ]; then \
+		echo "$(BLUE)$(ARROW)$(NC) Starting agents..."; \
+		for dir in agents/*/; do \
+			[ -d "$$dir" ] || continue; \
+			name=$$(basename "$$dir"); \
+			systemctl --user start "openclaw@$$name" 2>/dev/null || true; \
+		done; \
+	fi
 	$(call success,All services started!)
 	$(MAKE) --no-print-directory status
 
-stop: ## Stop all services
+stop: ## Stop all services (Docker infra + agents)
 	$(call section,Stopping Services)
-	$(call info,Stopping all services...)
-	docker compose down
+	@if [ -d agents ] && [ -n "$$(ls -A agents 2>/dev/null)" ]; then \
+		echo "$(BLUE)$(ARROW)$(NC) Stopping agents..."; \
+		for dir in agents/*/; do \
+			[ -d "$$dir" ] || continue; \
+			name=$$(basename "$$dir"); \
+			systemctl --user stop "openclaw@$$name" 2>/dev/null || true; \
+		done; \
+	fi
+	$(call info,Stopping Docker services...)
+	$(COMPOSE) down
 	$(call success,All services stopped!)
 
 restart: ## Restart services (use SERVICE=name for specific)
 	$(call section,Restarting Services)
 ifdef SERVICE
 	$(call info,Restarting $(SERVICE)...)
-	docker compose restart $(SERVICE)
+	$(COMPOSE) restart $(SERVICE)
 	$(call success,$(SERVICE) restarted!)
 else
 	$(call info,Restarting all services...)
-	docker compose restart
+	$(COMPOSE) restart
 	$(call success,All services restarted!)
 endif
 	echo ""
@@ -159,11 +215,11 @@ pull: ## Pull latest images (use SERVICE=name for specific)
 	$(call section,Pulling Images)
 ifdef SERVICE
 	$(call info,Pulling $(SERVICE)...)
-	docker compose pull $(SERVICE)
+	$(COMPOSE) pull $(SERVICE)
 	$(call success,$(SERVICE) image updated!)
 else
 	$(call info,Pulling all images...)
-	docker compose pull
+	$(COMPOSE) pull
 	$(call success,All images updated!)
 endif
 
@@ -171,13 +227,13 @@ update: ## Update and restart (use SERVICE=name for specific)
 	$(call section,Updating Services)
 ifdef SERVICE
 	$(call info,Updating $(SERVICE)...)
-	docker compose pull $(SERVICE) 2>&1 | grep -E "Pulling|Downloaded|Up to date" || true
-	docker compose up -d $(SERVICE)
+	$(COMPOSE) pull $(SERVICE) 2>&1 | grep -E "Pulling|Downloaded|Up to date" || true
+	$(COMPOSE) up -d $(SERVICE)
 	$(call success,$(SERVICE) updated and restarted!)
 else
 	$(call info,Updating all services...)
-	docker compose pull 2>&1 | grep -E "Pulling|Downloaded|Up to date" || true
-	docker compose up -d
+	$(COMPOSE) pull 2>&1 | grep -E "Pulling|Downloaded|Up to date" || true
+	$(COMPOSE) up -d
 	$(call success,All services updated!)
 endif
 	echo ""
@@ -187,11 +243,11 @@ logs: ## Show logs (use SERVICE=name for specific service)
 ifdef SERVICE
 	$(call info,Showing logs for $(SERVICE)... (Ctrl+C to exit))
 	echo ""
-	docker compose logs -f --tail=100 $(SERVICE)
+	$(COMPOSE) logs -f --tail=100 $(SERVICE)
 else
 	$(call info,Showing all logs... (Ctrl+C to exit))
 	echo ""
-	docker compose logs -f --tail=50
+	$(COMPOSE) logs -f --tail=50
 endif
 
 ##@ Service Groups
@@ -199,232 +255,228 @@ endif
 start-media: ## Start media stack (Sonarr, Radarr, Jellyfin)
 	$(call section,Starting Media Stack)
 	$(call info,Starting Sonarr...)
-	docker compose up -d sonarr
+	$(COMPOSE) up -d sonarr
 	$(call info,Starting Radarr...)
-	docker compose up -d radarr
+	$(COMPOSE) up -d radarr
 	$(call info,Starting Jellyfin...)
-	docker compose up -d jellyfin
+	$(COMPOSE) up -d jellyfin
 	$(call success,Media stack started!)
 	echo ""
 
 start-downloaders: ## Start download clients (qBittorrent, NZBGet, VPN)
 	$(call section,Starting Download Clients)
 	$(call info,Starting VPN gateway...)
-	docker compose up -d vpn
+	$(COMPOSE) up -d vpn
 	sleep 3
 	$(call info,Starting qBittorrent...)
-	docker compose up -d qbittorrent
+	$(COMPOSE) up -d qbittorrent
 	$(call info,Starting NZBGet...)
-	docker compose up -d nzbget
+	$(COMPOSE) up -d nzbget
 	$(call success,Download clients started!)
 	echo ""
 
 start-indexers: ## Start indexers (Prowlarr, Jackett, FlareSolverr)
 	$(call section,Starting Indexers)
 	$(call info,Starting Prowlarr...)
-	docker compose up -d prowlarr
+	$(COMPOSE) up -d prowlarr
 	$(call info,Starting Jackett...)
-	docker compose up -d jackett
+	$(COMPOSE) up -d jackett
 	$(call info,Starting FlareSolverr...)
-	docker compose up -d flaresolverr
+	$(COMPOSE) up -d flaresolverr
 	$(call success,Indexers started!)
 	echo ""
 
-start-moltbot: ## Start AI assistant
-	$(call section,Starting Moltbot)
-	@echo "$(BLUE)$(ARROW)$(NC) Starting moltbot gateway..."
-	@docker compose up -d moltbot-gateway
-	@sleep 2
-	@if docker compose ps moltbot-gateway | grep -q "Up"; then \
-		echo "$(GREEN)$(CHECK)$(NC) Moltbot is running!" && \
-		echo "$(BLUE)$(ARROW)$(NC) Access at: http://localhost:18789"; \
-	else \
-		echo "$(RED)$(CROSS)$(NC) Failed to start moltbot" && \
-		echo "$(YELLOW)⚠$(NC)  Check logs: make moltbot-logs"; \
-	fi
-	@echo ""
-
 stop-media: ## Stop media stack
 	$(call section,Stopping Media Stack)
-	docker compose stop sonarr radarr jellyfin
+	$(COMPOSE) stop sonarr radarr jellyfin
 	$(call success,Media stack stopped!)
 
 stop-downloaders: ## Stop download clients
 	$(call section,Stopping Download Clients)
-	docker compose stop qbittorrent nzbget
+	$(COMPOSE) stop qbittorrent nzbget
 	$(call success,Download clients stopped!)
 
 stop-indexers: ## Stop indexers
 	$(call section,Stopping Indexers)
-	docker compose stop prowlarr jackett flaresolverr
+	$(COMPOSE) stop prowlarr jackett flaresolverr
 	$(call success,Indexers stopped!)
 
-stop-moltbot: ## Stop AI assistant
-	$(call section,Stopping Moltbot)
-	docker compose stop moltbot-gateway
-	$(call success,Moltbot stopped!)
+##@ Agent Management
 
-##@ Moltbot Management
-
-moltbot-setup: ## Build image and run onboarding
-	$(call section,Moltbot Setup)
-	@if [ ! -f .env ]; then \
-		echo "$(RED)$(CROSS)$(NC) .env file not found!" && \
-		echo "$(BLUE)$(ARROW)$(NC) Run: make moltbot-env" && \
+new-agent: ## Create a new agent (NAME=required)
+	$(call section,New Agent)
+	@if [ -z "$(NAME)" ]; then \
+		echo "$(RED)$(CROSS)$(NC) NAME= is required" && \
+		echo "$(BLUE)$(ARROW)$(NC) Usage: make new-agent NAME=jarvis" && \
 		exit 1; \
 	fi
-	@echo "$(BLUE)$(ARROW)$(NC) Building moltbot image... (this may take 5-10 minutes)"
+	@./scripts/new-agent.sh $(NAME)
+
+list-agents: ## List all agents and their status
+	$(call section,Agents)
+	@if [ ! -d agents ] || [ -z "$$(ls -A agents 2>/dev/null)" ]; then \
+		echo "$(DIM)No agents found. Create one:$(NC)" && \
+		echo "  $(CYAN)make new-agent NAME=servo$(NC)" && \
+		echo ""; \
+		exit 0; \
+	fi
+	@printf "$(BOLD)%-15s %-12s %-10s$(NC)\n" "AGENT" "STATUS" "PORT"
+	@echo "─────────────────────────────────────────"
+	@for dir in agents/*/; do \
+		[ -d "$$dir" ] || continue; \
+		name=$$(basename "$$dir"); \
+		port=$$(grep -E '^OPENCLAW_PORT=' "$$dir/.env" 2>/dev/null | cut -d= -f2 || echo "?"); \
+		state=$$(systemctl --user is-active "openclaw@$$name" 2>/dev/null || echo "inactive"); \
+		if [ "$$state" = "active" ]; then \
+			printf "$(GREEN)●$(NC) %-13s $(GREEN)%-12s$(NC) %s\n" "$$name" "$$state" "$$port"; \
+		else \
+			printf "$(RED)●$(NC) %-13s $(DIM)%-12s$(NC) %s\n" "$$name" "$$state" "$$port"; \
+		fi; \
+	done
 	@echo ""
-	@docker compose build --progress=plain moltbot-gateway
+
+start-agent: ## Start an agent (AGENT=name)
+	$(check-agent)
+	$(call section,Starting $(AGENT))
+	@echo "$(BLUE)$(ARROW)$(NC) Starting $(AGENT)..."
+	@systemctl --user start "openclaw@$(AGENT)"
+	@sleep 2
+	@STATE=$$(systemctl --user is-active "openclaw@$(AGENT)" 2>/dev/null || echo "failed"); \
+	PORT=$$(grep -E '^OPENCLAW_PORT=' agents/$(AGENT)/.env 2>/dev/null | cut -d= -f2 || echo "?"); \
+	if [ "$$STATE" = "active" ]; then \
+		echo "$(GREEN)$(CHECK)$(NC) $(AGENT) is running!" && \
+		echo "$(BLUE)$(ARROW)$(NC) Port: $$PORT"; \
+	else \
+		echo "$(RED)$(CROSS)$(NC) Failed to start $(AGENT)" && \
+		echo "$(YELLOW)⚠$(NC)  Check logs: make agent-logs AGENT=$(AGENT)"; \
+	fi
 	@echo ""
-	@echo "$(GREEN)$(CHECK)$(NC) Image built successfully!"
-	@echo ""
-	@echo "$(BLUE)$(ARROW)$(NC) Running onboarding..."
-	@docker compose run --rm moltbot-cli onboard
+
+stop-agent: ## Stop an agent (AGENT=name)
+	$(check-agent)
+	$(call section,Stopping $(AGENT))
+	systemctl --user stop "openclaw@$(AGENT)"
+	$(call success,$(AGENT) stopped!)
+	echo ""
+
+restart-agent: ## Restart an agent (AGENT=name)
+	$(check-agent)
+	$(call section,Restarting $(AGENT))
+	systemctl --user restart "openclaw@$(AGENT)"
+	$(call success,$(AGENT) restarted!)
+	echo ""
+
+start-agents: ## Start all agents
+	$(call section,Starting All Agents)
+	@for dir in agents/*/; do \
+		[ -d "$$dir" ] || continue; \
+		name=$$(basename "$$dir"); \
+		echo "$(BLUE)$(ARROW)$(NC) Starting $$name..."; \
+		systemctl --user start "openclaw@$$name" 2>/dev/null || true; \
+	done
+	$(call success,All agents started!)
+	echo ""
+
+stop-agents: ## Stop all agents
+	$(call section,Stopping All Agents)
+	@for dir in agents/*/; do \
+		[ -d "$$dir" ] || continue; \
+		name=$$(basename "$$dir"); \
+		echo "$(BLUE)$(ARROW)$(NC) Stopping $$name..."; \
+		systemctl --user stop "openclaw@$$name" 2>/dev/null || true; \
+	done
+	$(call success,All agents stopped!)
+	echo ""
+
+agent-logs: ## Show agent logs (AGENT=name)
+	$(check-agent)
+	$(call section,$(AGENT) Logs)
+	$(call info,Showing $(AGENT) logs... (Ctrl+C to exit))
+	echo ""
+	journalctl --user -u "openclaw@$(AGENT)" -f --no-hostname -n 100
+
+agent-status: ## Show detailed agent status (AGENT=name)
+	$(check-agent)
+	$(call section,$(AGENT) Status)
+	systemctl --user status "openclaw@$(AGENT)" --no-pager || true
+	echo ""
+
+##@ Agent Setup
+
+install-openclaw: ## Install OpenClaw on host (one-time setup)
+	$(call section,Installing OpenClaw)
+	@./scripts/setup-host.sh
+
+update-openclaw: ## Update OpenClaw to latest version
+	$(call section,Updating OpenClaw)
+	$(call info,Updating OpenClaw...)
+	npm install -g openclaw@latest
+	$(call success,OpenClaw updated!)
+	echo ""
+
+agent-setup: ## Onboard an agent (AGENT=name)
+	$(check-agent)
+	$(call section,Setting Up $(AGENT))
+	@echo "$(BLUE)$(ARROW)$(NC) Running onboarding for $(AGENT)..."
+	@./scripts/agent-ctl.sh $(AGENT) onboard
 	@echo "$(GREEN)$(CHECK)$(NC) Setup complete!"
 	@echo ""
 	@echo "$(BLUE)$(ARROW)$(NC) Next steps:"
-	@echo "  1. $(CYAN)make moltbot-auth-claude$(NC) - Login with Claude Pro"
-	@echo "  2. $(CYAN)make moltbot-telegram$(NC)   - Setup Telegram"
-	@echo "  3. $(CYAN)make start-moltbot$(NC)       - Start the bot"
+	@echo "  1. $(CYAN)make agent-auth AGENT=$(AGENT)$(NC)      - Login with Claude Pro"
+	@echo "  2. $(CYAN)make agent-telegram AGENT=$(AGENT)$(NC)  - Setup Telegram"
+	@echo "  3. $(CYAN)make start-agent AGENT=$(AGENT)$(NC)     - Start the agent"
 	@echo ""
 
-moltbot-env: ## Create .env with auto-generated token
-	$(call section,Environment Setup)
-	@if [ -f .env ]; then \
-		echo "$(YELLOW)⚠$(NC)  .env already exists - not overwriting"; \
-	else \
-		echo "$(BLUE)$(ARROW)$(NC) Generating secure gateway token..." && \
-		TOKEN=$$(openssl rand -hex 32) && \
-		echo "MOLTBOT_GATEWAY_TOKEN=$$TOKEN" > .env && \
-		echo "ANTHROPIC_API_KEY=" >> .env && \
-		echo "" >> .env && \
-		echo "# For Claude Pro: Leave ANTHROPIC_API_KEY empty" >> .env && \
-		echo "# For API: Add your API key above (ANTHROPIC_API_KEY=sk-ant-...)" >> .env && \
-		echo "$(GREEN)$(CHECK)$(NC) .env created with auto-generated token!" && \
-		echo "" && \
-		echo "$(BOLD)Your gateway token:$(NC) $(GREEN)$$TOKEN$(NC)" && \
-		echo "" && \
-		echo "$(BLUE)$(ARROW)$(NC) Next: $(CYAN)make moltbot-setup$(NC) to build and configure"; \
-	fi
-	@echo ""
-
-moltbot-token: ## Show current gateway token (for reference)
-	$(call section,Gateway Token)
-	@if [ -f .env ]; then \
-		TOKEN=$$(grep MOLTBOT_GATEWAY_TOKEN .env | cut -d'=' -f2) && \
-		if [ -n "$$TOKEN" ]; then \
-			echo "$(GREEN)Current token:$(NC) $$TOKEN"; \
-		else \
-			echo "$(YELLOW)⚠$(NC)  No token set in .env" && \
-			echo "$(BLUE)$(ARROW)$(NC) Run: $(CYAN)make moltbot-env$(NC) to generate one"; \
-		fi; \
-	else \
-		echo "$(RED)✗$(NC) .env file not found" && \
-		echo "$(BLUE)$(ARROW)$(NC) Run: $(CYAN)make moltbot-env$(NC) to create it"; \
-	fi
-	@echo ""
-
-moltbot-onboard: ## Run moltbot onboarding
-	$(call section,Moltbot Onboarding)
-	@echo "$(BLUE)$(ARROW)$(NC) Starting onboarding wizard..."
-	@docker compose run --rm moltbot-cli onboard
-	@echo ""
-	@echo "$(GREEN)$(CHECK)$(NC) Onboarding complete!"
-	@echo ""
-	@echo "$(BLUE)$(ARROW)$(NC) Next: $(CYAN)make moltbot-auth-claude$(NC) to login with Claude Pro"
-	@echo ""
-
-moltbot-auth-claude: ## Login with Claude Pro account
-	$(call section,Claude Pro Authentication)
-	$(call info,Starting Claude Pro login...)
+agent-auth: ## Login agent with Claude Pro (AGENT=name)
+	$(check-agent)
+	$(call section,Claude Pro Authentication — $(AGENT))
+	$(call info,Starting Claude Pro login for $(AGENT)...)
 	echo ""
-	docker compose run --rm moltbot-cli auth login
+	./scripts/agent-ctl.sh $(AGENT) auth login
 	echo ""
 	$(call success,Authentication complete!)
-	$(call info,Verifying...)
-	$(MAKE) --no-print-directory moltbot-auth-status
-
-moltbot-auth-status: ## Check authentication status
-	$(call section,Authentication Status)
-	docker compose run --rm moltbot-cli auth status || \
-		($(call error,Not authenticated); \
-		$(call info,Run: make moltbot-auth-claude))
 	echo ""
 
-moltbot-auth-refresh: ## Refresh Claude Pro session
-	$(call section,Refreshing Session)
+agent-auth-status: ## Check agent auth status (AGENT=name)
+	$(check-agent)
+	$(call section,Auth Status — $(AGENT))
+	./scripts/agent-ctl.sh $(AGENT) auth status || \
+		($(call error,Not authenticated); \
+		$(call info,Run: make agent-auth AGENT=$(AGENT)))
+	echo ""
+
+agent-auth-refresh: ## Refresh agent Claude Pro session (AGENT=name)
+	$(check-agent)
+	$(call section,Refreshing Session — $(AGENT))
 	$(call info,Refreshing Claude Pro session...)
-	docker compose run --rm moltbot-cli auth refresh
+	./scripts/agent-ctl.sh $(AGENT) auth refresh
 	$(call success,Session refreshed!)
 	echo ""
 
-moltbot-auth-logout: ## Logout from Claude
-	$(call section,Logout)
-	$(call warn,Logging out from Claude Pro...)
-	docker compose run --rm moltbot-cli auth logout
-	$(call success,Logged out successfully!)
+agent-telegram: ## Setup Telegram for an agent (AGENT=name)
+	$(check-agent)
+	$(call section,Telegram Setup — $(AGENT))
+	$(call info,Starting Telegram setup for $(AGENT)...)
+	@TOKEN=$$(grep -E '^TELEGRAM_BOT_TOKEN=' agents/$(AGENT)/.env | cut -d= -f2); \
+	if [ -z "$$TOKEN" ]; then \
+		echo "$(RED)$(CROSS)$(NC) No TELEGRAM_BOT_TOKEN in agents/$(AGENT)/.env" && \
+		echo "$(BLUE)$(ARROW)$(NC) Get one from @BotFather on Telegram, then add it to agents/$(AGENT)/.env" && \
+		exit 1; \
+	fi
 	echo ""
-
-moltbot-telegram: ## Setup Telegram channel
-	$(call section,Telegram Setup)
-	$(call info,Starting Telegram setup...)
+	./scripts/agent-ctl.sh $(AGENT) channels add
 	echo ""
-	$(call info,Ensure TELEGRAM_BOT_TOKEN is set in .env)
-	echo ""
-	docker compose run --rm moltbot-cli channels add
-	echo ""
-	$(call success,Telegram connected!)
-	echo ""
-
-moltbot-telegram-login: ## Re-login to Telegram
-	$(call section,Telegram Re-login)
-	$(call info,Re-connecting to Telegram...)
-	docker compose run --rm moltbot-cli channels login
-	$(call success,Telegram reconnected!)
-	echo ""
-
-moltbot-build: ## Build moltbot image (included in setup)
-	$(call section,Building Moltbot)
-	@echo "$(BLUE)$(ARROW)$(NC) Building image... (5-10 minutes)"
-	@echo ""
-	docker compose build --progress=plain moltbot-gateway
-	@echo ""
-	@echo "$(GREEN)$(CHECK)$(NC) Build complete!"
-	@echo ""
-
-moltbot-rebuild: ## Rebuild from scratch (no cache)
-	$(call section,Rebuilding Moltbot)
-	@echo "$(YELLOW)⚠$(NC)  Rebuilding from scratch... (10-15 minutes)"
-	@echo ""
-	docker compose build --no-cache --progress=plain moltbot-gateway
-	@echo ""
-	@echo "$(GREEN)$(CHECK)$(NC) Rebuild complete!"
-	@echo ""
-
-moltbot-logs: ## Show moltbot logs
-	$(call section,Moltbot Logs)
-	$(call info,Showing moltbot logs... (Ctrl+C to exit))
-	echo ""
-	docker compose logs -f --tail=100 moltbot-gateway
-
-moltbot-verify: ## Verify moltbot installation
-	$(call section,Moltbot Verification)
-	./verify-moltbot.sh
+	$(call success,Telegram connected for $(AGENT)!)
 	echo ""
 
 ##@ Initial Setup
 
 setup-dirs: ## Create directory structure
 	$(call section,Directory Setup)
-	$(call info,Creating moltbot directories...)
-	mkdir -p /mnt/server/moltbot/{config,workspace,data}
-	mkdir -p /mnt/server/moltbot/config/{credentials,sessions,logs}
+	$(call info,Creating base directories...)
+	mkdir -p /mnt/server/agents
+	mkdir -p agents
 	$(call success,Directories created!)
-	$(call info,Created:)
-	echo "  • /mnt/server/moltbot/config"
-	echo "  • /mnt/server/moltbot/workspace"
-	echo "  • /mnt/server/moltbot/data"
 	echo ""
 
 setup-vpn: ## Display VPN setup instructions
@@ -444,16 +496,17 @@ setup: setup-dirs ## Initial server setup
 	$(call success,Basic setup done!)
 	echo ""
 	$(call info,Next steps:)
-	echo "  1. $(CYAN)make setup-vpn$(NC)        - Configure VPN"
-	echo "  2. $(CYAN)make start$(NC)            - Start all services"
-	echo "  3. $(CYAN)make urls$(NC)             - View service URLs"
+	echo "  1. $(CYAN)make setup-vpn$(NC)                    - Configure VPN"
+	echo "  2. $(CYAN)make start$(NC)                        - Start all services"
+	echo "  3. $(CYAN)make urls$(NC)                         - View service URLs"
 	echo ""
-	$(call info,For Moltbot:)
-	echo "  1. $(CYAN)make moltbot-env$(NC)      - Create .env"
-	echo "  2. $(CYAN)make moltbot-setup$(NC)    - Build & configure"
-	echo "  3. $(CYAN)make moltbot-auth-claude$(NC) - Login"
-	echo "  4. $(CYAN)make moltbot-telegram$(NC) - Setup Telegram"
-	echo "  5. $(CYAN)make start-moltbot$(NC)    - Start bot"
+	$(call info,For Agents:)
+	echo "  1. $(CYAN)make install-openclaw$(NC)             - Install OpenClaw (one-time)"
+	echo "  2. $(CYAN)make new-agent NAME=servo$(NC)         - Create an agent"
+	echo "  3. $(CYAN)make agent-setup AGENT=servo$(NC)      - Onboard the agent"
+	echo "  4. $(CYAN)make agent-auth AGENT=servo$(NC)       - Login with Claude Pro"
+	echo "  5. $(CYAN)make agent-telegram AGENT=servo$(NC)   - Setup Telegram"
+	echo "  6. $(CYAN)make start-agent AGENT=servo$(NC)      - Start the agent"
 	echo ""
 
 ##@ Maintenance
@@ -471,12 +524,14 @@ backup: ## Backup all configurations
 	$(call success,Backup created: $$BACKUP_FILE)
 	@echo ""
 
-backup-moltbot: ## Backup moltbot only
-	$(call section,Moltbot Backup)
-	@$(call info,Creating moltbot backup...)
+backup-agents: ## Backup all agent configs and workspaces
+	$(call section,Agent Backup)
+	@$(call info,Creating agent backup...)
 	@mkdir -p backups
-	@BACKUP_FILE=backups/moltbot-backup-$$(date +%Y%m%d-%H%M%S).tar.gz; \
-	tar -czf $$BACKUP_FILE /mnt/server/moltbot/config; \
+	@BACKUP_FILE=backups/agents-backup-$$(date +%Y%m%d-%H%M%S).tar.gz; \
+	tar -czf $$BACKUP_FILE \
+		agents/ \
+		/mnt/server/agents/ 2>/dev/null || true; \
 	$(call success,Backup created: $$BACKUP_FILE)
 	@echo ""
 
@@ -487,7 +542,7 @@ clean: ## Stop and remove all containers (DESTRUCTIVE!)
 	read confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		echo "$(BLUE)$(ARROW)$(NC) Removing everything..." && \
-		docker compose down -v && \
+		$(COMPOSE) down -v && \
 		echo "$(GREEN)$(CHECK)$(NC) Everything removed!"; \
 	else \
 		echo "$(BLUE)$(ARROW)$(NC) Cancelled"; \
@@ -519,7 +574,7 @@ health: ## Check container health
 	$(call section,Health Status)
 	printf "$(BOLD)%-30s %-15s %-50s$(NC)\n" "CONTAINER" "STATE" "STATUS"
 	echo "────────────────────────────────────────────────────────────────────────────────────"
-	docker compose ps --format '{{.Name}}|{{.State}}|{{.Status}}' 2>/dev/null | while IFS='|' read -r name state status; do \
+	$(COMPOSE) ps --format '{{.Name}}|{{.State}}|{{.Status}}' 2>/dev/null | while IFS='|' read -r name state status; do \
 		if [ "$$state" = "running" ]; then \
 			printf "$(GREEN)%-30s$(NC) " "$$name"; \
 		else \
@@ -541,7 +596,7 @@ health: ## Check container health
 vpn-check: ## Verify VPN connection
 	$(call section,VPN Status)
 	@echo "$(BLUE)$(ARROW)$(NC) Checking VPN IP address..."
-	@VPN_IP=$$(docker compose exec qbittorrent curl -s ifconfig.me 2>/dev/null || echo "Not running"); \
+	@VPN_IP=$$($(COMPOSE) exec qbittorrent curl -s ifconfig.me 2>/dev/null || echo "Not running"); \
 	if [ "$$VPN_IP" = "Not running" ]; then \
 		echo "$(RED)$(CROSS)$(NC) VPN container not running"; \
 	else \
@@ -559,48 +614,48 @@ disk-usage: ## Show disk usage
 
 sonarr-restart: ## Restart Sonarr
 	$(call info,Restarting Sonarr...)
-	docker compose restart sonarr
+	$(COMPOSE) restart sonarr
 	$(call success,Sonarr restarted!)
 
 radarr-restart: ## Restart Radarr
 	$(call info,Restarting Radarr...)
-	docker compose restart radarr
+	$(COMPOSE) restart radarr
 	$(call success,Radarr restarted!)
 
 jellyfin-restart: ## Restart Jellyfin
 	$(call info,Restarting Jellyfin...)
-	docker compose restart jellyfin
+	$(COMPOSE) restart jellyfin
 	$(call success,Jellyfin restarted!)
 
 qbittorrent-restart: ## Restart qBittorrent
 	$(call info,Restarting qBittorrent...)
-	docker compose restart qbittorrent
+	$(COMPOSE) restart qbittorrent
 	$(call success,qBittorrent restarted!)
 
 prowlarr-restart: ## Restart Prowlarr
 	$(call info,Restarting Prowlarr...)
-	docker compose restart prowlarr
+	$(COMPOSE) restart prowlarr
 	$(call success,Prowlarr restarted!)
 
 sonarr-logs: ## Show Sonarr logs
 	$(call info,Sonarr logs... (Ctrl+C to exit))
 	echo ""
-	docker compose logs -f --tail=100 sonarr
+	$(COMPOSE) logs -f --tail=100 sonarr
 
 radarr-logs: ## Show Radarr logs
 	$(call info,Radarr logs... (Ctrl+C to exit))
 	echo ""
-	docker compose logs -f --tail=100 radarr
+	$(COMPOSE) logs -f --tail=100 radarr
 
 jellyfin-logs: ## Show Jellyfin logs
 	$(call info,Jellyfin logs... (Ctrl+C to exit))
 	echo ""
-	docker compose logs -f --tail=100 jellyfin
+	$(COMPOSE) logs -f --tail=100 jellyfin
 
 qbittorrent-logs: ## Show qBittorrent logs
 	$(call info,qBittorrent logs... (Ctrl+C to exit))
 	echo ""
-	docker compose logs -f --tail=100 qbittorrent
+	$(COMPOSE) logs -f --tail=100 qbittorrent
 
 ##@ Information
 
@@ -625,21 +680,45 @@ urls: ## Show all service URLs
 	echo ""
 	echo "$(BOLD)$(GREEN)Infrastructure$(NC)"
 	echo "  Portainer   $(CYAN)→$(NC) http://localhost:9000"
-	echo "  Moltbot     $(CYAN)→$(NC) http://localhost:18789 $(DIM)(SSH tunnel for remote)$(NC)"
 	echo ""
-	echo "$(DIM)Remote access: ssh -L 18789:localhost:18789 egouda@<server-ip>$(NC)"
+	@if [ -d agents ] && [ -n "$$(ls -A agents 2>/dev/null)" ]; then \
+		echo "$(BOLD)$(GREEN)Agents$(NC)"; \
+		for dir in agents/*/; do \
+			[ -d "$$dir" ] || continue; \
+			name=$$(basename "$$dir"); \
+			port=$$(grep -E '^OPENCLAW_PORT=' "$$dir/.env" 2>/dev/null | cut -d= -f2 || echo "?"); \
+			printf "  %-12s $(CYAN)→$(NC) http://localhost:%s\n" "$$name" "$$port"; \
+		done; \
+		echo ""; \
+	fi
+	echo "$(DIM)Remote access: ssh -L <port>:localhost:<port> egouda@<server-ip>$(NC)"
 	echo ""
 
 dashboard: ## Quick overview dashboard
 	$(HEADER)
 	$(call section,System Overview)
-	@echo "$(BOLD)Services:$(NC)"
-	@RUNNING=$$(docker compose ps --filter "status=running" -q 2>/dev/null | wc -l); \
-	TOTAL=$$(docker compose config --services 2>/dev/null | wc -l); \
+	@echo "$(BOLD)Docker Services:$(NC)"
+	@RUNNING=$$($(COMPOSE) ps --filter "status=running" -q 2>/dev/null | wc -l); \
+	TOTAL=$$($(COMPOSE) config --services 2>/dev/null | wc -l); \
 	if [ $$RUNNING -eq $$TOTAL ]; then \
 		echo "  $(GREEN)●$(NC) $$RUNNING/$$TOTAL running $(GREEN)$(CHECK)$(NC)"; \
 	else \
 		echo "  $(YELLOW)●$(NC) $$RUNNING/$$TOTAL running $(YELLOW)⚠$(NC)"; \
+	fi && echo ""
+	@echo "$(BOLD)Agents:$(NC)"
+	@if [ -d agents ] && [ -n "$$(ls -A agents 2>/dev/null)" ]; then \
+		for dir in agents/*/; do \
+			[ -d "$$dir" ] || continue; \
+			name=$$(basename "$$dir"); \
+			state=$$(systemctl --user is-active "openclaw@$$name" 2>/dev/null || echo "inactive"); \
+			if [ "$$state" = "active" ]; then \
+				echo "  $(GREEN)●$(NC) $$name — active"; \
+			else \
+				echo "  $(RED)●$(NC) $$name — $$state"; \
+			fi; \
+		done; \
+	else \
+		echo "  $(DIM)No agents configured$(NC)"; \
 	fi && echo ""
 	@echo "$(BOLD)Resource Usage:$(NC)"
 	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemPerc}}" 2>/dev/null | head -6 | tail -5 | \
@@ -649,8 +728,9 @@ dashboard: ## Quick overview dashboard
 	@echo "$(BOLD)Disk Usage:$(NC)"
 	@df -h /mnt/server 2>/dev/null | tail -1 | awk '{print "  " $$3 " used / " $$2 " total (" $$5 " used)"}' || echo "  N/A" && echo ""
 	@echo "$(BOLD)Quick Actions:$(NC)"
-	@echo "  $(CYAN)make status$(NC)      - Detailed service status"
-	@echo "  $(CYAN)make logs$(NC)        - View all logs"
-	@echo "  $(CYAN)make urls$(NC)        - Show service URLs"
-	@echo "  $(CYAN)make health$(NC)      - Check health status"
+	@echo "  $(CYAN)make status$(NC)        - Detailed service status"
+	@echo "  $(CYAN)make list-agents$(NC)   - Show all agents"
+	@echo "  $(CYAN)make logs$(NC)          - View all logs"
+	@echo "  $(CYAN)make urls$(NC)          - Show service URLs"
+	@echo "  $(CYAN)make health$(NC)        - Check health status"
 	@echo ""
