@@ -198,6 +198,15 @@ services:
       - vpn
     restart: unless-stopped
 
+  jellyfin-vue:
+    image: jellyfin/jellyfin-vue:unstable
+    container_name: jellyfin-vue
+    restart: unless-stopped
+    ports:
+      - "8097:80"
+    networks:
+      - proxy
+
   nzbget:
     image: ghcr.io/linuxserver/nzbget
     container_name: nzbget
