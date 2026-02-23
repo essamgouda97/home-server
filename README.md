@@ -24,18 +24,21 @@ A complete media server with automated downloading, streaming, and AI agent supp
 
 ```bash
 # 1. Clone and navigate to directory
-cd /home/egouda/workspace/home-server
+cd home-server
 
-# 2. Create required directories
+# 2. Edit server.conf — set SERVER_DATA_DIR to your data path
+nano server.conf
+
+# 3. Create required directories
 make setup
 
-# 3. Setup VPN (place your vpn.conf in /mnt/server/vpn/)
+# 4. Setup VPN (place your vpn.conf in $SERVER_DATA_DIR/vpn/)
 make setup-vpn
 
-# 4. Start all services
+# 5. Start all services
 make start
 
-# 5. Check status
+# 6. Check status
 make status
 ```
 
@@ -45,11 +48,15 @@ make status
 make urls    # Show all service URLs
 ```
 
-Key services:
-- **Jellyfin**: http://localhost:8096 - Media streaming
-- **Sonarr**: http://localhost:8989 - TV show management
-- **Radarr**: http://localhost:7878 - Movie management
-- **Portainer**: http://localhost:9000 - Docker management
+Key services (use `*.lan` URLs after setting DNS — see below):
+- **Dashboard**: http://home.lan - Everything at a glance
+- **Jellyfin Vue**: http://vue.lan - Media streaming (modern UI)
+- **Jellyfin**: http://jellyfin.lan - Media streaming (classic UI)
+- **Sonarr**: http://sonarr.lan - TV show management
+- **Radarr**: http://radarr.lan - Movie management
+- **Portainer**: http://portainer.lan - Docker management
+
+> **DNS Setup:** Set your router's DNS to `192.168.0.124` so all devices resolve `*.lan` URLs automatically. Or manually set DNS per device.
 
 ---
 
@@ -63,29 +70,35 @@ Key services:
 | **Bazarr** | 6767 | Subtitle management |
 
 ### Media Streaming
-| Service | Port | Purpose |
-|---------|------|---------|
-| **Jellyfin** | 8096 | Media streaming server |
-| **Jellyseerr** | 5055 | Request management for Jellyfin |
+| Service | Port | URL | Purpose |
+|---------|------|-----|---------|
+| **Jellyfin** | 8096 | `jellyfin.lan` | Media streaming server (backend) |
+| **Jellyfin Vue** | 8097 | `vue.lan` | Modern web client for Jellyfin |
+| **Jellyseerr** | 5055 | `requests.lan` | Request management for Jellyfin |
 
 ### Download Clients
-| Service | Port | Purpose |
-|---------|------|---------|
-| **qBittorrent** | 15080 | Torrent client (via VPN) |
-| **NZBGet** | 6789 | Usenet downloader |
+| Service | Port | URL | Purpose |
+|---------|------|-----|---------|
+| **qBittorrent** | 15080 | `torrents.lan` | Torrent client (via VPN) |
+| **NZBGet** | 6789 | `nzbget.lan` | Usenet downloader |
 
 ### Indexers
-| Service | Port | Purpose |
-|---------|------|---------|
-| **Prowlarr** | 9696 | Indexer manager |
-| **Jackett** | 9117 | Torrent indexer proxy |
-| **FlareSolverr** | 8191 | Cloudflare bypass |
+| Service | Port | URL | Purpose |
+|---------|------|-----|---------|
+| **Prowlarr** | 9696 | `prowlarr.lan` | Indexer manager |
+| **FlareSolverr** | 8191 | - | Cloudflare bypass |
 
 ### Infrastructure
-| Service | Port | Purpose |
-|---------|------|---------|
-| **VPN Gateway** | - | OpenVPN client for qBittorrent |
-| **Portainer** | 9000 | Docker container management |
+| Service | Port | URL | Purpose |
+|---------|------|-----|---------|
+| **Nginx Proxy Manager** | 80/443/81 | - | Reverse proxy (clean .lan URLs) |
+| **Homepage** | 3000 | `home.lan` | Dashboard with live service stats |
+| **Uptime Kuma** | 3001 | `status.lan` | Service monitoring |
+| **Watchtower** | - | - | Docker image update notifications |
+| **Recyclarr** | - | - | TRaSH Guides quality profile sync |
+| **dnsmasq** | 53 | - | Local DNS (*.lan → 192.168.0.124) |
+| **VPN Gateway** | - | - | OpenVPN client for qBittorrent |
+| **Portainer** | 9000 | `portainer.lan` | Docker container management |
 
 ---
 
@@ -106,6 +119,7 @@ Docker (docker-compose.yml)          Host (systemd user services)
 ```
 
 ```
+server.conf                     # Path configuration (SERVER_DATA_DIR, etc.)
 templates/                      # Git-tracked starter files
   workspace/                    # SOUL.md, AGENTS.md, BOOTSTRAP.md, etc.
   env.template                  # .env skeleton
@@ -135,7 +149,7 @@ make new-agent NAME=jarvis
 nano agents/jarvis/.env
 
 # 4. Set your Telegram chat ID in the config
-nano /mnt/server/agents/jarvis/config/openclaw.json
+nano $SERVER_DATA_DIR/agents/jarvis/config/openclaw.json  # see server.conf
 
 # 5. Onboard the agent
 make agent-setup AGENT=jarvis
@@ -205,7 +219,7 @@ Systemd hardening: `NoNewPrivileges=true`, `ProtectSystem=strict`, `ProtectHome=
 - `templates/` is **git-tracked** — safe generic starter files
 - Root `.env` holds only `ANTHROPIC_API_KEY` (shared across all agents)
 - Each agent's `.env` holds its own `TELEGRAM_BOT_TOKEN` and `OPENCLAW_GATEWAY_TOKEN`
-- Agent state lives in `/mnt/server/agents/<name>/config/`
+- Agent state lives in `$SERVER_DATA_DIR/agents/<name>/config/` (see `server.conf`)
 
 ### Customizing an Agent
 
@@ -278,7 +292,8 @@ make disk-usage        # Show disk usage
 ### Directory Structure
 
 ```
-/home/egouda/workspace/home-server/
+home-server/
+├── server.conf                     # Path configuration (SERVER_DATA_DIR)
 ├── docker-compose.yml              # Media stack services (Docker)
 ├── .env                            # Shared secrets (ANTHROPIC_API_KEY)
 ├── Makefile                        # All management commands
@@ -297,7 +312,7 @@ make disk-usage        # Show disk usage
     ├── new-agent.sh                # Scaffold a new agent
     └── agent-ctl.sh                # Agent CLI wrapper
 
-/mnt/server/
+$SERVER_DATA_DIR/                   # Configured in server.conf (default: /mnt/server)
 ├── agents/
 │   └── servo/config/               # Agent state (credentials, sessions, openclaw.json)
 ├── media/                          # Media library
@@ -308,7 +323,7 @@ make disk-usage        # Show disk usage
 ### VPN Setup
 
 1. Get VPN config file from your provider
-2. Place at: `/mnt/server/vpn/vpn.conf`
+2. Place at: `$SERVER_DATA_DIR/vpn/vpn.conf`
 3. Restart VPN container: `make restart SERVICE=vpn`
 
 See: https://greenfrognest.com/LMDSVPN.php#vpncontainer
@@ -328,7 +343,7 @@ ANTHROPIC_API_KEY=
 OPENCLAW_GATEWAY_TOKEN=<auto-generated>
 TELEGRAM_BOT_TOKEN=<from @BotFather>
 OPENCLAW_PORT=18789
-OPENCLAW_STATE_DIR=/mnt/server/agents/<name>/config
+OPENCLAW_STATE_DIR=$SERVER_DATA_DIR/agents/<name>/config
 ```
 
 ### Authentication
@@ -394,8 +409,8 @@ make agent-auth AGENT=name           # Full re-login if needed
 
 **Bot not responding to messages:**
 ```bash
-# Check allowlist in agent config
-cat /mnt/server/agents/<name>/config/openclaw.json | grep allowFrom
+# Check allowlist in agent config (path from server.conf)
+cat $SERVER_DATA_DIR/agents/<name>/config/openclaw.json | grep allowFrom
 
 # Check logs
 make agent-logs AGENT=name
@@ -408,11 +423,11 @@ make restart-agent AGENT=name
 
 ```bash
 # Fix ownership (services use PUID=1000)
-sudo chown -R 1000:1000 /mnt/server/agents/<name>/
+sudo chown -R 1000:1000 $SERVER_DATA_DIR/agents/<name>/
 
 # Fix agent config permissions
-chmod 700 /mnt/server/agents/<name>/config
-chmod 600 /mnt/server/agents/<name>/config/openclaw.json
+chmod 700 $SERVER_DATA_DIR/agents/<name>/config
+chmod 600 $SERVER_DATA_DIR/agents/<name>/config/openclaw.json
 ```
 
 ---
@@ -514,7 +529,7 @@ make install-openclaw              # Install OpenClaw on host
 make setup                         # Create directories
 make new-agent NAME=servo          # Scaffold an agent
 # Edit agents/servo/.env with TELEGRAM_BOT_TOKEN
-# Edit /mnt/server/agents/servo/config/openclaw.json with TELEGRAM_CHAT_ID
+# Edit $SERVER_DATA_DIR/agents/servo/config/openclaw.json with TELEGRAM_CHAT_ID
 make agent-setup AGENT=servo       # Onboard
 make agent-auth AGENT=servo        # Login with Claude Pro
 make agent-telegram AGENT=servo    # Connect Telegram
@@ -529,5 +544,6 @@ make start                         # Start everything
 - **Sonarr**: https://wiki.servarr.com/sonarr
 - **Radarr**: https://wiki.servarr.com/radarr
 - **Jellyfin**: https://jellyfin.org/docs/
+- **Jellyfin Vue**: https://github.com/jellyfin/jellyfin-vue
 - **Prowlarr**: https://wiki.servarr.com/prowlarr
 - **OpenClaw**: https://github.com/openclaw/openclaw

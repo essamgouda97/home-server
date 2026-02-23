@@ -7,6 +7,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Load server config
+# shellcheck disable=SC1091
+source "$ROOT_DIR/server.conf"
+SERVER_DATA_DIR="${SERVER_DATA_DIR:-/mnt/server}"
+REPO_DIR="${REPO_DIR:-$ROOT_DIR}"
+
 NAME="${1:-}"
 shift || true
 
@@ -17,11 +23,11 @@ if [ -z "$NAME" ]; then
     exit 1
 fi
 
-AGENT_DIR="$ROOT_DIR/agents/$NAME"
+AGENT_DIR="$REPO_DIR/agents/$NAME"
 
 if [ ! -d "$AGENT_DIR" ]; then
     echo "Error: Agent '$NAME' not found at $AGENT_DIR"
-    echo "Available: $(ls "$ROOT_DIR/agents/" 2>/dev/null | tr '\n' ' ')"
+    echo "Available: $(ls "$REPO_DIR/agents/" 2>/dev/null | tr '\n' ' ')"
     exit 1
 fi
 
@@ -33,6 +39,6 @@ if [ -f "$AGENT_DIR/.env" ]; then
     set +a
 fi
 
-export OPENCLAW_STATE_DIR="/mnt/server/agents/$NAME/config"
+export OPENCLAW_STATE_DIR="$SERVER_DATA_DIR/agents/$NAME/config"
 
 exec openclaw "$@"

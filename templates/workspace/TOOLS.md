@@ -58,7 +58,7 @@ API keys are in each service's web UI under Settings.
 ### System Monitoring
 
 ```bash
-df -h /mnt/server                     # Disk usage
+df -h __SERVER_DATA_DIR__                     # Disk usage
 free -h                                # Memory usage
 uptime                                 # System uptime and load
 top -bn1 | head -20                    # Process overview
@@ -68,20 +68,20 @@ sensors                                # Temperature readings (if available)
 ### Media & Download Paths
 
 ```
-/mnt/server/media/movies/              # Movie library
-/mnt/server/media/tvshows/             # TV show library
-/mnt/server/downloads/                 # Active downloads
-/mnt/server/downloads/complete/        # Completed downloads
+__SERVER_DATA_DIR__/media/movies/              # Movie library
+__SERVER_DATA_DIR__/media/tvshows/             # TV show library
+__SERVER_DATA_DIR__/downloads/                 # Active downloads
+__SERVER_DATA_DIR__/downloads/complete/        # Completed downloads
 ```
 
 ### Safety Rules
 
 **Never do:**
-- `rm -rf` anything under `/mnt/server/media/` — that's the library
+- `rm -rf` anything under `__SERVER_DATA_DIR__/media/` — that's the library
 - Stop the VPN while qBittorrent is running — exposes real IP
 - Modify Docker volumes directly — use the service APIs
 - Change port bindings without checking for conflicts
-- Delete `/mnt/server/*/config/` directories — those are service databases
+- Delete `__SERVER_DATA_DIR__/*/config/` directories — those are service databases
 
 **Always:**
 - Use `make` targets when available (safer than raw docker commands)

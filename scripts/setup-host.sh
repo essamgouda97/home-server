@@ -7,7 +7,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Load server config
+# shellcheck disable=SC1091
+source "$ROOT_DIR/server.conf"
+SERVER_DATA_DIR="${SERVER_DATA_DIR:-/mnt/server}"
+REPO_DIR="${REPO_DIR:-$ROOT_DIR}"
+
 echo "=== OpenClaw Host Setup ==="
+echo ""
+echo "  Repo:       $REPO_DIR"
+echo "  Data dir:   $SERVER_DATA_DIR"
 echo ""
 
 # Check Node.js version (22+ required)
@@ -61,8 +70,8 @@ fi
 # Create base directories
 echo ""
 echo "Creating directories..."
-mkdir -p /mnt/server/agents
-mkdir -p "$ROOT_DIR/agents"
+mkdir -p "$SERVER_DATA_DIR/agents"
+mkdir -p "$REPO_DIR/agents"
 echo "Directories created — OK"
 
 # Install systemd user unit template
@@ -96,10 +105,12 @@ NODE_BIN_DIR=$(dirname "$(command -v node)")
 echo "  Binary: $OPENCLAW_BIN"
 echo "  Node bin: $NODE_BIN_DIR"
 
-# Substitute the actual binary path and node bin dir into the template
+# Substitute all paths into the template
 sed -e "s|__OPENCLAW_BIN__|$OPENCLAW_BIN|g" \
     -e "s|__NODE_BIN_DIR__|$NODE_BIN_DIR|g" \
-    "$ROOT_DIR/templates/systemd/openclaw@.service" > "$SYSTEMD_DIR/openclaw@.service"
+    -e "s|__REPO_DIR__|$REPO_DIR|g" \
+    -e "s|__SERVER_DATA_DIR__|$SERVER_DATA_DIR|g" \
+    "$REPO_DIR/templates/systemd/openclaw@.service" > "$SYSTEMD_DIR/openclaw@.service"
 
 systemctl --user daemon-reload
 echo "Systemd template installed — OK"

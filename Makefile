@@ -2,6 +2,9 @@
 .DEFAULT_GOAL := help
 .SILENT:
 
+# Load server config (paths are configurable in server.conf)
+SERVER_DATA_DIR := $(shell grep -E '^SERVER_DATA_DIR=' server.conf 2>/dev/null | cut -d= -f2 || echo /mnt/server)
+
 # Compose command — media stack only (agents run as systemd services)
 COMPOSE := docker compose -f docker-compose.yml
 
@@ -474,7 +477,7 @@ agent-telegram: ## Setup Telegram for an agent (AGENT=name)
 setup-dirs: ## Create directory structure
 	$(call section,Directory Setup)
 	$(call info,Creating base directories...)
-	mkdir -p /mnt/server/agents
+	mkdir -p $(SERVER_DATA_DIR)/agents
 	mkdir -p agents
 	$(call success,Directories created!)
 	echo ""
@@ -485,7 +488,7 @@ setup-vpn: ## Display VPN setup instructions
 	echo ""
 	echo "  $(BOLD)Steps:$(NC)"
 	echo "  1. Get VPN config from your provider"
-	echo "  2. Place at: $(CYAN)/mnt/server/vpn/vpn.conf$(NC)"
+	echo "  2. Place at: $(CYAN)$(SERVER_DATA_DIR)/vpn/vpn.conf$(NC)"
 	echo "  3. Restart VPN: $(CYAN)make restart SERVICE=vpn$(NC)"
 	echo ""
 	echo "  $(BOLD)Guide:$(NC) $(BLUE)https://greenfrognest.com/LMDSVPN.php#vpncontainer$(NC)"
@@ -517,8 +520,8 @@ backup: ## Backup all configurations
 	@mkdir -p backups
 	@BACKUP_FILE=backups/home-server-backup-$$(date +%Y%m%d-%H%M%S).tar.gz; \
 	tar -czf $$BACKUP_FILE \
-		/mnt/server/*/config \
-		/mnt/server/*/data \
+		$(SERVER_DATA_DIR)/*/config \
+		$(SERVER_DATA_DIR)/*/data \
 		docker-compose.yml \
 		.env 2>/dev/null || true; \
 	$(call success,Backup created: $$BACKUP_FILE)
@@ -531,7 +534,7 @@ backup-agents: ## Backup all agent configs and workspaces
 	@BACKUP_FILE=backups/agents-backup-$$(date +%Y%m%d-%H%M%S).tar.gz; \
 	tar -czf $$BACKUP_FILE \
 		agents/ \
-		/mnt/server/agents/ 2>/dev/null || true; \
+		$(SERVER_DATA_DIR)/agents/ 2>/dev/null || true; \
 	$(call success,Backup created: $$BACKUP_FILE)
 	@echo ""
 
@@ -607,7 +610,7 @@ vpn-check: ## Verify VPN connection
 
 disk-usage: ## Show disk usage
 	$(call section,Disk Usage)
-	df -h /mnt/server 2>/dev/null | grep -v tmpfs || echo "$(YELLOW)⚠$(NC)  /mnt/server not found"
+	df -h $(SERVER_DATA_DIR) 2>/dev/null | grep -v tmpfs || echo "$(YELLOW)⚠$(NC)  $(SERVER_DATA_DIR) not found"
 	echo ""
 
 ##@ Quick Actions
@@ -726,7 +729,7 @@ dashboard: ## Quick overview dashboard
 		echo "  $$name: CPU $$cpu | MEM $$mem"; \
 	done || echo "  No stats available" && echo ""
 	@echo "$(BOLD)Disk Usage:$(NC)"
-	@df -h /mnt/server 2>/dev/null | tail -1 | awk '{print "  " $$3 " used / " $$2 " total (" $$5 " used)"}' || echo "  N/A" && echo ""
+	@df -h $(SERVER_DATA_DIR) 2>/dev/null | tail -1 | awk '{print "  " $$3 " used / " $$2 " total (" $$5 " used)"}' || echo "  N/A" && echo ""
 	@echo "$(BOLD)Quick Actions:$(NC)"
 	@echo "  $(CYAN)make status$(NC)        - Detailed service status"
 	@echo "  $(CYAN)make list-agents$(NC)   - Show all agents"

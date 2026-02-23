@@ -1,5 +1,6 @@
 services:
 
+  # ─── VPN ────────────────────────────────────────────
   vpn:
     container_name: vpn-gateway
     image: dperson/openvpn-client
@@ -34,31 +35,103 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - /mnt/server/vpn:/vpn
+      - ${SERVER_DATA_DIR:-/mnt/server}/vpn:/vpn
 
+  # ─── INFRASTRUCTURE ─────────────────────────────────
   portainer:
     image: portainer/portainer-ce
     container_name: portainer
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /mnt/server/portainer/data:/data
+      - ${SERVER_DATA_DIR:-/mnt/server}/portainer/data:/data
     ports:
       - "9000:9000"
     networks:
       - proxy
     restart: unless-stopped
 
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: npm
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81"        # Admin UI
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/npm/data:/data
+      - ${SERVER_DATA_DIR:-/mnt/server}/npm/letsencrypt:/etc/letsencrypt
+    networks:
+      - proxy
+
+  dnsmasq:
+    image: jpillora/dnsmasq
+    container_name: dnsmasq
+    restart: unless-stopped
+    ports:
+      - "192.168.0.124:53:53/udp"
+      - "192.168.0.124:53:53/tcp"
+      - "5380:8080"    # Web UI
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - proxy
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-America/Edmonton}
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *   # 4 AM daily
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_MONITOR_ONLY=true       # Notify only, don't auto-update
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - proxy
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PUID=1000
+      - PGID=1000
+    networks:
+      - proxy
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/uptimekuma/data:/app/data
+    networks:
+      - proxy
+
+  # ─── MEDIA MANAGEMENT ──────────────────────────────
   sonarr:
     image: linuxserver/sonarr
     container_name: sonarr
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=UTC
+      - TZ=${TZ:-America/Edmonton}
     volumes:
-      - /mnt/server/sonarr/data:/config
-      - /mnt/server/media/tvshows:/tv
-      - /mnt/server/downloads:/downloads
+      - ${SERVER_DATA_DIR:-/mnt/server}/sonarr/data:/config
+      - ${SERVER_DATA_DIR:-/mnt/server}/media/tvshows:/tv
+      - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
     ports:
       - "8989:8989"
     networks:
@@ -71,93 +144,30 @@ services:
     environment:
       - PUID=0
       - PGID=0
-      - TZ=UTC
+      - TZ=${TZ:-America/Edmonton}
       - UMASK=022
     volumes:
-      - /mnt/server/radarr/config:/config
-      - /mnt/server/media/movies:/movies
-      - /mnt/server/downloads:/downloads
+      - ${SERVER_DATA_DIR:-/mnt/server}/radarr/config:/config
+      - ${SERVER_DATA_DIR:-/mnt/server}/media/movies:/movies
+      - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
     ports:
       - "7878:7878"
     networks:
       - proxy
     restart: unless-stopped
 
-  bazarr:
-    image: linuxserver/bazarr
-    container_name: bazarr
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=UTC
-    volumes:
-      - /mnt/server/bazarr/config:/config
-      - /mnt/server/media/movies:/movies
-      - /mnt/server/media/tvshows:/tv
-    ports:
-      - "6767:6767"
-    networks:
-      - proxy
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:latest
+    container_name: recyclarr
     restart: unless-stopped
-
-  jackett:
-    image: linuxserver/jackett
-    container_name: jackett
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=UTC
-      - AUTO_UPDATE=true
     volumes:
-      - /mnt/server/jackett/config:/config
-      - /mnt/server/downloads:/downloads
-    ports:
-      - "9117:9117"
+      - ${SERVER_DATA_DIR:-/mnt/server}/recyclarr/config:/config
+    environment:
+      - TZ=${TZ:-America/Edmonton}
     networks:
       - proxy
-    restart: unless-stopped
-  flaresolverr:
-    # DockerHub mirror flaresolverr/flaresolverr:latest
-    image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: flaresolverr
-    environment:
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_HTML=${LOG_HTML:-false}
-      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
-      - TZ=Etc/UTC
-    ports:
-      - "${PORT:-8191}:8191"
-    restart: unless-stopped 
-  prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
-    container_name: prowlarr
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-    volumes:
-      - /mnt/server/prowlarr/data:/config
-    ports:
-      - "9696:9696"
-    networks:
-      - proxy
-    restart: unless-stopped
 
-  jellyseerr:
-    image: fallenbagel/jellyseerr:latest
-    container_name: jellyseerr
-    environment:
-      - LOG_LEVEL=debug
-      - TZ=UTC
-      - PORT=5055
-    volumes:
-      - /mnt/server/jellyseerr/config:/app/config
-    ports:
-      - "5055:5055"
-    networks:
-      - proxy
-    restart: always
-
+  # ─── MEDIA STREAMING ───────────────────────────────
   jellyfin:
     image: ghcr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -165,15 +175,15 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=UTC
+      - TZ=${TZ:-America/Edmonton}
       - UMASK_SET=022
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
     volumes:
-      - /mnt/server/jellyfin/config:/config
-      - /mnt/server/media/tvshows:/data/tvshows
-      - /mnt/server/media/movies:/data/movies
-      - /mnt/server/media/m3u:/data/m3u
+      - ${SERVER_DATA_DIR:-/mnt/server}/jellyfin/config:/config
+      - ${SERVER_DATA_DIR:-/mnt/server}/media/tvshows:/data/tvshows
+      - ${SERVER_DATA_DIR:-/mnt/server}/media/movies:/data/movies
+      - ${SERVER_DATA_DIR:-/mnt/server}/media/m3u:/data/m3u
     devices:
       - /dev/dri:/dev/dri
     ports:
@@ -181,22 +191,6 @@ services:
     networks:
       - proxy
     restart: always
-
-  qbittorrent:
-    image: linuxserver/qbittorrent
-    container_name: qbittorrent
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - UMASK_SET=022
-      - WEBUI_PORT=15080
-    volumes:
-      - /mnt/server/qbittorrent/config:/config
-      - /mnt/server/downloads:/downloads
-    network_mode: "service:vpn"
-    depends_on:
-      - vpn
-    restart: unless-stopped
 
   jellyfin-vue:
     image: jellyfin/jellyfin-vue:unstable
@@ -207,22 +201,119 @@ services:
     networks:
       - proxy
 
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=${TZ:-America/Edmonton}
+      - PORT=5055
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/jellyseerr/config:/app/config
+    ports:
+      - "5055:5055"
+    networks:
+      - proxy
+    restart: always
+
+  # ─── DOWNLOAD CLIENTS ──────────────────────────────
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK_SET=022
+      - WEBUI_PORT=15080
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/qbittorrent/config:/config
+      - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
+    network_mode: "service:vpn"
+    depends_on:
+      - vpn
+    restart: unless-stopped
+
   nzbget:
     image: ghcr.io/linuxserver/nzbget
     container_name: nzbget
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=UTC
+      - TZ=${TZ:-America/Edmonton}
     volumes:
-      - /mnt/server/nzbget/config:/config
-      - /mnt/server/downloads:/downloads
+      - ${SERVER_DATA_DIR:-/mnt/server}/nzbget/config:/config
+      - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
     ports:
       - "6789:6789"
     networks:
       - proxy
     restart: unless-stopped
 
+  # ─── INDEXERS ───────────────────────────────────────
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=${TZ:-America/Edmonton}
+    ports:
+      - "${PORT:-8191}:8191"
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-America/Edmonton}
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/prowlarr/data:/config
+    ports:
+      - "9696:9696"
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  # ─── TRANSCODING ────────────────────────────────────
+  #   tdarr:
+  #     image: ghcr.io/haveagitgat/tdarr:latest
+  #     container_name: tdarr
+  #     restart: unless-stopped
+  #     runtime: nvidia
+  #     environment:
+  #       - PUID=1000
+  #       - PGID=1000
+  #       - TZ=${TZ:-America/Edmonton}
+  #       - UMASK_SET=002
+  #       - serverIP=0.0.0.0
+  #       - serverPort=8266
+  #       - webUIPort=8265
+  #       - internalNode=true
+  #       - inContainer=true
+  #       - ffmpegVersion=7
+  #       - nodeName=HomeServer
+  #       - NVIDIA_VISIBLE_DEVICES=all
+  #       - NVIDIA_DRIVER_CAPABILITIES=all
+  #     volumes:
+  #       - ${SERVER_DATA_DIR:-/mnt/server}/tdarr/server:/app/server
+  #       - ${SERVER_DATA_DIR:-/mnt/server}/tdarr/configs:/app/configs
+  #       - ${SERVER_DATA_DIR:-/mnt/server}/tdarr/logs:/app/logs
+  #       - ${SERVER_DATA_DIR:-/mnt/server}/tdarr/temp:/temp
+  #       - ${SERVER_DATA_DIR:-/mnt/server}/media/movies:/media/movies
+  #       - ${SERVER_DATA_DIR:-/mnt/server}/media/tvshows:/media/tvshows
+  #     devices:
+  #       - /dev/dri:/dev/dri
+  #     ports:
+  #       - "8265:8265"    # Web UI
+  #       - "8266:8266"    # Server
+  #     networks:
+  #       - proxy
+  # 
 networks:
   proxy:
     driver: bridge
