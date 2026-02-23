@@ -198,17 +198,6 @@ services:
       - vpn
     restart: unless-stopped
 
-  reiverr:
-    image: ghcr.io/aleksilassila/reiverr:latest
-    container_name: reiverr
-    restart: unless-stopped
-    ports:
-      - "9494:9494"
-    volumes:
-      - /mnt/server/reiverr/config:/usr/src/app/config
-    networks:
-      - proxy
-
   nzbget:
     image: ghcr.io/linuxserver/nzbget
     container_name: nzbget
