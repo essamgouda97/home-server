@@ -94,18 +94,22 @@ services:
     networks:
       - proxy
 
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
+  homarr:
+    image: ghcr.io/homarr-labs/homarr:latest
+    container_name: homarr
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:7575"
     volumes:
-      - ${SERVER_DATA_DIR:-/mnt/server}/homepage/config:/app/config
+      - /mnt/server/homarr/configs:/appdata/configs
+      - /mnt/server/homarr/data:/appdata/data
+      - /mnt/server/homarr/icons:/appdata/icons
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - PUID=1000
-      - PGID=1000
+      - TZ=America/Edmonton
+      - AUTH_PROVIDER=credentials
+      - AUTH_SECRET=supersecrethomarrkey2026
+      - SECRET_ENCRYPTION_KEY=47bf5777d6df5346dc8ec034d6a6afb6b98b5bcac5a26f8dd68b0a45f776992c
     networks:
       - proxy
 
@@ -314,6 +318,27 @@ services:
   #     networks:
   #       - proxy
   # 
+  # ─── NETWORKING ──────────────────────────────────────
+
+  # ─── MONITORING ─────────────────────────────────────
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Edmonton
+      - APP_KEY=base64:YSDEfeRv6fLBeIWgp7dsI8ANb2w/OYgBY5dqZPnuQAI=
+      - SPEEDTEST_SCHEDULE=0 */3 * * *
+      - DB_CONNECTION=sqlite
+    volumes:
+      - /mnt/server/speedtest-tracker/config:/config
+    ports:
+      - "8765:80"
+    networks:
+      - proxy
+
 networks:
   proxy:
     driver: bridge
