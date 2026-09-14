@@ -75,8 +75,10 @@ async def main():
                            wake_word_id=None, prefer_local_intents=False)
             if existing:
                 # Preserve any speech engines added later in the UI.
-                desired = {k:v for k,v in desired.items() if k in
-                           ['conversation_engine','conversation_language','prefer_local_intents']}
+                # HA requires the full schema for updates, not a partial patch.
+                desired = {k: existing.get(k, v) for k, v in desired.items()}
+                desired.update(conversation_engine=agent, conversation_language='en',
+                               prefer_local_intents=False)
                 await ws_call('assist_pipeline/pipeline/update', pipeline_id=existing['id'], **desired)
                 pipeline_id = existing['id']
             else:
