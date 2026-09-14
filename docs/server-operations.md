@@ -63,6 +63,8 @@ sudo sh scripts/setup-mac-dns.sh 10.0.0.182
 
 Other devices must use `10.0.0.182` as DNS or use the IP and port directly.
 This change did not alter router-wide DNS or public port forwarding.
+The Rogers Xfinity gateway's Local IP Network, Rogers Network, and Advanced
+pages were inspected: this firmware exposes no custom DHCP DNS setting.
 
 | Name | LAN URL | Direct port |
 |---|---|---:|
@@ -95,6 +97,44 @@ Internal connections use Docker names: `jellyfin`, `sonarr`, `radarr`, `prowlarr
 and `vpn-gateway`. qBittorrent shares the VPN gateway network namespace. Its
 external IP was verified to differ from the host's external IP. The VPN has a
 return route for `10.0.0.0/24`; the host itself retains its normal default route.
+
+## Remote access with Tailscale
+
+Tailscale 1.102.4 was installed from its official signed Ubuntu package repository
+on the server and its notarized standalone macOS package on the Mac. The server's
+`tailscaled` system service is enabled at boot. Installation left all existing
+network and server health checks passing. Account sign-in and remote verification
+are still pending; installation alone does not enable remote access.
+
+To reproduce installation on Ubuntu 22.04:
+
+```sh
+sudo bash scripts/setup-tailscale.sh egouda
+tailscale up --accept-dns=false --hostname=home-server --operator=egouda \
+  --advertise-routes=10.0.0.182/32
+```
+
+Complete the generated browser sign-in using the same personal Tailscale account
+as the client devices. In the Tailscale admin console, approve only the advertised
+`10.0.0.182/32` route, then add a restricted DNS nameserver `10.0.0.182` for domain
+`lan`. This makes the existing `.lan` URLs and IP/port addresses reachable over
+Tailscale without routing access to the rest of the home network. Clients must
+accept Tailscale DNS and subnet routes (Linux clients need `--accept-routes`).
+The server deliberately does not accept tailnet DNS, avoiding a DNS loop.
+IPv4 forwarding is already enabled by Docker on this host.
+
+Keep Tailscale connected on the Mac and sign in to the same account on phones or
+other clients. Retain each service's existing login. This setup does not require
+router port forwarding, a public Funnel, an exit node, or Tailscale SSH; existing
+OpenSSH keys continue to apply. Tailscale credentials remain in its private system
+state and must never be committed.
+
+After setup, verify the Mac route to `10.0.0.182` uses Tailscale, test both DNS
+transports and service URLs with `make check-network`, and run `make check-server`
+on the server. An additional phone test on cellular verifies access from outside
+the home network. For rollback, disconnect Tailscale on the client, remove the
+restricted DNS entry and approved route from the admin console, and run
+`tailscale down` on the server; LAN access remains available.
 
 ## Changes and verification
 
