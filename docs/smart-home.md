@@ -58,6 +58,26 @@ registered. Test the sensor with a controlled small amount of water before
 relying on notifications; test unavailable/battery alerts separately. The built-in
 audible alarm is independent of whether HA is reachable.
 
+### First leak sensor pairing checklist
+
+1. Connect the Zigbee coordinator to the server and map its stable USB path with
+   the Compose override. Configure **Zigbee Home Automation (ZHA)** and select
+   `/dev/zigbee`; dedicate the coordinator to Zigbee.
+2. Open ZHA and select **Add device**. Open the sensor's battery cover, install
+   its batteries and hold its reset button for about five seconds until the LED
+   is solid red. Release it; blinking blue means pairing mode. Pair close to the
+   coordinator initially. See the manufacturer's [water leak FAQ](https://discuss.3reality.com/d/32-water-leak-sensor-faq).
+3. Give it a location-based name, such as `Laundry leak sensor`, and assign an area.
+4. Enroll the phone in the Home Assistant companion app and allow notifications.
+   In Settings → Automations & scenes → Blueprints, create an automation from
+   **Water leak alert**, selecting the sensor's moisture entity and the phone's
+   notification action. Give that action a title/message, then save and enable it.
+5. Touch a damp cloth across the bottom contacts to test it. Expect its loud
+   alarm, a Wet state in HA and a phone notification. Dry the contacts and verify
+   it returns to Dry. Repeat at its final location with phone Wi-Fi disabled
+   and Tailscale connected. This is detection/notification, not an automatic
+   water shutoff system.
+
 For the Chromecast/Google TV device, start with **Google Cast** under Devices &
 Services. It can provide media-player controls. **Android TV Remote** is another
 option for supported Google TV devices and usually requires accepting a pairing
@@ -113,6 +133,13 @@ not active yet: they require phone enrollment, the Home zone, real entity IDs
 and the physical coordinator/receivers. The deployed HA UI is ready for these
 steps. For the first trial, use two ESP32 receivers supported by ESPresense and
 one supported dedicated beacon; add MQTT to Compose when provisioning them.
+
+Concrete starting hardware: a [THIRDREALITY Zigbee Smart Plug Gen2](https://www.thirdreality.com/products/smart-plug-gen2-power-metering)
+can control a lamp and repeat Zigbee signals; two **M5Stack Atom S3 Lite** nodes
+are the ESPresense project's current [quick-start recommendation](https://espresense.com/quick-start/)
+for a two-room trial. The Bluetooth beacon still needs to be chosen and enrolled.
+These nodes require power and 2.4 GHz Wi-Fi; buying them alone does not enable
+room tracking. Start with the coordinator and leak alert before expanding.
 
 ## Official references
 

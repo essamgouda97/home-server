@@ -16,6 +16,13 @@ route and split DNS cover these addresses. The username is `egouda`; use the
 generated password saved in the Mac's login Keychain under `files.lan` and
 `home-server.lan`. Open Keychain Access and search for either name to retrieve
 it after authenticating to macOS. New devices need that password too.
+To choose a replacement password, run `python3 scripts/setup-mac-creative.py
+--change-password` on the Mac. Two hidden dialogs collect and confirm it; the
+script updates File Browser, Samba, Home Assistant and the Mac Keychain together.
+The Ubuntu login password is not needed. File Browser and Samba restart briefly;
+reconnect Finder afterward if needed. This helper expects the services still
+share their initial password; separately changed credentials or HA MFA need
+individual account management instead.
 Web sessions require login; anonymous signup, file sharing and command execution
 are disabled initially. SMB requires authenticated SMB3 with encryption.
 Service ports bind only to the server's private LAN IP. Do not forward them on
