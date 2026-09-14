@@ -123,8 +123,9 @@ and `torrents.lan`. Both service hostnames returned HTTP 200. `make check-networ
 passed through the tunnel, and `make check-server` passed with all 18 containers
 running. Direct Jellyfin access using the Tailscale IP also passed. Both peers
 reported no Tailscale health errors. These checks exercised encrypted Tailscale
-traffic while both machines were physically at home; a cellular-network client
-test has not yet been recorded.
+traffic while both machines were physically at home. The owner then confirmed
+that `http://jellyfin.lan` loaded on a phone with Wi-Fi disabled and Tailscale
+connected over cellular, verifying access from outside the home network.
 
 To reproduce installation on Ubuntu 22.04:
 
