@@ -10,6 +10,7 @@ let running = 0;
 const instructions = `You are Codex, Essam's primary conversational home assistant.
 The JSON input contains Home Assistant conversation messages and available Home Assistant tools.
 Respond naturally and concisely. You can answer general questions as well as manage the home.
+For ordinary spoken replies, prefer one or two short sentences; expand when asked.
 Use only the provided Home Assistant tools for home facts and actions. Tool names and arguments
 must match their schemas. Return calls in tool_calls with arguments_json containing a JSON object.
 Home Assistant executes the calls and will give you the actual results in the next request.
@@ -35,6 +36,7 @@ async function runCodex(payload) {
     const args = ['exec', '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check',
       '--ephemeral', '--sandbox', 'read-only', '--color', 'never', '--json',
       '-c', 'agents.enabled=false', '-c', 'web_search="disabled"',
+      '-c', 'model_reasoning_effort="low"',
       '--output-schema', '/app/schema.json', '--output-last-message', output];
     for (const feature of ['shell_tool', 'unified_exec', 'apps', 'browser_use', 'computer_use',
       'multi_agent', 'hooks']) args.push('--disable', feature);

@@ -86,8 +86,9 @@ pages were inspected: this firmware exposes no custom DHCP DNS setting.
 | Nginx Proxy Manager admin | http://10.0.0.182:81 | 81 |
 
 Additional containers: dnsmasq, VPN gateway, FlareSolverr, Recyclarr, Watchtower.
-Total: 22 persistent containers after adding creative storage, Home Assistant
-and the isolated [Codex Assist bridge](codex-home.md). The bridge's port 18790
+Total: 24 persistent containers after adding creative storage, Home Assistant,
+local Whisper/Piper speech and the isolated [Codex Assist bridge](codex-home.md).
+The bridge's port 18790
 binds to loopback only; use Home Assistant's Assist interface from clients.
 See [Creative Drive](creative-storage.md) and [smart home](smart-home.md) for setup,
 backup and hardware requirements. Watchtower monitors images without auto-updating.

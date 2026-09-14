@@ -703,6 +703,19 @@ check-codex-home: ## Exercise Codex against only the virtual demo switch (uses s
 	python3 scripts/check-codex-bridge.py
 	python3 scripts/configure-codex-home.py --check
 
+.PHONY: voice-start voice-configure check-voice
+voice-start: ## Cache local speech models, then start isolated Whisper/Piper (server)
+	set -eu
+	python3 scripts/prepare-voice.py
+	$(COMPOSE) up -d --wait --wait-timeout 180 whisper piper
+	python3 scripts/configure-codex-home.py --voice
+
+voice-configure: ## Reconcile local speech integrations and both Assist pipelines (server)
+	python3 scripts/configure-codex-home.py --voice
+
+check-voice: ## Test synthetic audio through Home Local and Codex (Codex uses subscription quota)
+	python3 scripts/configure-codex-home.py --check-voice
+
 creative-mount: ## Mount Creative in Finder on the Mac
 	python3 scripts/mount-creative.py
 

@@ -10,6 +10,8 @@ import subprocess
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--check', action='store_true')
+parser.add_argument('--voice', action='store_true', help='Reconcile local Whisper/Piper and Home Local pipeline')
+parser.add_argument('--check-voice', action='store_true', help='Test synthetic spoken commands through both pipelines')
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]
 settings = dict(line.split('=', 1) for line in (repo/'server.conf').read_text().splitlines()
@@ -77,8 +79,7 @@ async def main():
                 # Preserve any speech engines added later in the UI.
                 # HA requires the full schema for updates, not a partial patch.
                 desired = {k: existing.get(k, v) for k, v in desired.items()}
-                desired.update(conversation_engine=agent, conversation_language='en',
-                               prefer_local_intents=False)
+                desired.update(conversation_engine=agent, conversation_language='en')
                 await ws_call('assist_pipeline/pipeline/update', pipeline_id=existing['id'], **desired)
                 pipeline_id = existing['id']
             else:
@@ -91,6 +92,10 @@ async def main():
             if preferred['conversation_engine'] != agent:
                 raise RuntimeError('Codex is not the preferred pipeline')
             print('PASS: Codex is the default Assist agent; virtual demo switch exposed.', flush=True)
+            if VOICE:
+                await configure_voice(request, ws_call, headers, pipeline_id)
+            if CHECK_VOICE:
+                await check_voice(s, base, tokens['access_token'], request, ws_call, headers)
             if CHECK:
                 conversation_id = None
                 for text, expected in [('Turn on the Codex demo switch.', 'on'),
@@ -112,11 +117,15 @@ async def main():
 asyncio.run(main())
 '''
 
-source = 'PASSWORD = ' + repr(password) + '\nSERVER_IP = ' + repr(settings['SERVER_IP']) + '\nCHECK = ' + repr(args.check) + '\n' + worker
+source = 'PASSWORD = ' + repr(password) + '\nSERVER_IP = ' + repr(settings['SERVER_IP']) + '\nCHECK = ' + repr(args.check) + '\n'
+source += 'VOICE = '+repr(args.voice or args.check_voice)+'\nCHECK_VOICE = '+repr(args.check_voice)+'\n'
+source += 'VOICE_LANGUAGE = '+repr(settings.get('VOICE_LANGUAGE','en'))+'\nPIPER_VOICE = '+repr(settings.get('PIPER_VOICE','en_US-lessac-high'))+'\n'
+source += 'WHISPER_HOST = '+repr(settings.get('WHISPER_HOST','172.22.0.2'))+'\nPIPER_HOST = '+repr(settings.get('PIPER_HOST','172.22.0.3'))+'\n'
+source += (repo/'scripts/voice-worker.py').read_text()+'\n'+worker
 result = subprocess.run(['docker', 'exec', '-i', 'homeassistant', 'python3', '-'],
                         input=source, text=True, capture_output=True)
 for line in result.stdout.splitlines():
-    if line.startswith('PASS:'):
+    if line.startswith(('PASS:', 'VOICE CHECK:')):
         print(line)
 if result.returncode:
     raise SystemExit('Codex Home setup/check failed. Check service health, integration and owner login; no credentials printed.')

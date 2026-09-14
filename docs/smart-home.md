@@ -14,9 +14,10 @@ the same address. Precise coordinates, users, access tokens and device pairing
 state belong in `/mnt/server/homeassistant`, not this public repository.
 
 [Codex is now the default Assist conversation agent](codex-home.md), using the
-existing ChatGPT subscription login. Open Assist and use text input; a virtual
-demo switch is available for testing. Speech engines and Grok voice are not
-configured. The hardware and voice sections below describe future additions.
+existing ChatGPT subscription login. Open Assist and use voice or text; a virtual
+demo switch is available for testing. [Local Whisper/Piper speech](local-voice.md)
+is installed, with **Home Local** available for entirely local basic commands.
+Grok remains deferred. Physical microphone satellites are future additions.
 
 ## What is configuration as code
 
@@ -104,10 +105,10 @@ a radio-style handheld voice remote would need compatible ESPHome hardware,
 firmware, Wi-Fi and a battery. Treat that as a later project, not a plug-and-play
 replacement for the phone.
 
-For a fully local speech pipeline, add Wyoming Whisper (speech-to-text) and
-Piper (text-to-speech) containers, then configure those integrations and an Assist
-pipeline. This avoids a voice cloud subscription. The current installation's
-text Assist alone does not prove that a speech pipeline is configured. Only
+Wyoming Whisper (speech-to-text) and Piper (text-to-speech) containers provide
+the [installed local speech pipeline](local-voice.md). Codex remains the default;
+Home Local uses HA's built-in intent engine for supported commands without any
+cloud model. Only
 expose intended devices to Assist; add aliases such as “office lamp” after real
 entities exist. Do not make unqualified commands such as “turn it off” depend
 on an untested room estimate.
@@ -137,7 +138,7 @@ is required for these presence approaches. Floor plans and beacon identifiers
 stay private. MQTT and presence configuration can be added to Compose after
 choosing the receivers and rooms.
 
-Room tracking, phone location, voice recognition and the leak automation are
+Room tracking, phone location and the leak automation are
 not active yet: they require phone enrollment, the Home zone, real entity IDs
 and the physical coordinator/receivers. The deployed HA UI is ready for these
 steps. For the first trial, use two ESP32 receivers supported by ESPresense and

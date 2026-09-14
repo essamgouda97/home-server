@@ -104,6 +104,58 @@ services:
       timeout: 5s
       retries: 3
 
+  whisper:
+    image: rhasspy/wyoming-whisper:3.8.1@sha256:ba6fcb6056ebe237d15a325381763a80af2fc8fcedaa04f6a714a7375eb20d80
+    container_name: whisper
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    command: ["--model", "${WHISPER_MODEL:-small.en}", "--language", "${VOICE_LANGUAGE:-en}", "--compute-type", "int8", "--cpu-threads", "4", "--beam-size", "1", "--vad-filter", "--local-files-only"]
+    environment:
+      HOME: /tmp
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - type: bind
+        source: ${SERVER_DATA_DIR:-/mnt/server}/voice/whisper
+        target: /data
+        bind:
+          create_host_path: false
+    tmpfs: ["/tmp:rw,nosuid,nodev,size=256m,mode=1777"]
+    networks:
+      voice:
+        ipv4_address: ${WHISPER_HOST:-172.22.0.2}
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 3g
+    cpus: 4
+
+  piper:
+    image: rhasspy/wyoming-piper:2.5.2@sha256:7d39aafac409c2b6b09d999ed04d84c311d632e558b35baa60fad6aac722af7a
+    container_name: piper
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    command: ["--voice", "${PIPER_VOICE:-en_US-lessac-high}", "--local-files-only"]
+    environment:
+      HOME: /tmp
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - type: bind
+        source: ${SERVER_DATA_DIR:-/mnt/server}/voice/piper
+        target: /data
+        bind:
+          create_host_path: false
+    tmpfs: ["/tmp:rw,nosuid,nodev,size=128m,mode=1777"]
+    networks:
+      voice:
+        ipv4_address: ${PIPER_HOST:-172.22.0.3}
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 1g
+    cpus: 2
+
   codex-home:
     build: ./containers/codex-home
     image: home-server/codex-home:local
@@ -521,6 +573,12 @@ secrets:
     file: ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/creative_password
 
 networks:
+  voice:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: ${VOICE_SUBNET:-172.22.0.0/16}
   assistant:
     driver: bridge
   creative:

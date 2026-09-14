@@ -12,7 +12,7 @@ integration. Grok/xAI voice was explicitly deferred; no xAI key is installed.
 Open the Home Assistant Companion app connected to this server, or
 [assistant.lan](http://assistant.lan), then open **Assist** (the speech-bubble
 button). Select **Codex** if the app has remembered a different assistant.
-Switch to text input and try:
+Use the microphone or text input and try:
 
 - “Turn on the Codex demo switch.”
 - “Turn it off.”
@@ -20,10 +20,12 @@ Switch to text input and try:
 
 The demo is an `input_boolean` helper and controls no physical equipment.
 It was tested through real Codex requests with its HA state checked afterward.
-The default pipeline has text input/output. You can use the phone keyboard's
-dictation button to enter text. Server speech recognition, spoken replies,
-wake words and microphone satellites are not installed. This distinction also
-means the Assist microphone button needs a speech pipeline before it can work.
+The default pipeline now uses local Whisper recognition and Piper spoken replies;
+see [local voice setup](local-voice.md). Speech is processed on the server, while
+Codex receives the transcribed conversation through its existing OpenAI login.
+Choose **Home Local** for supported home commands processed entirely locally.
+Wake words and microphone satellites are not installed. Browser microphone
+access generally needs HTTPS; use the Companion app's native Assist interface.
 The app must use this server and Tailscale must be connected when away from home.
 
 After adding a real device, go to **Settings → Voice assistants → Expose** and
@@ -101,6 +103,10 @@ helper explicitly. It preserves speech engines added later in the UI. It uses
 the private shared home-services owner password and revokes its temporary
 session afterward. If you enable MFA/change the HA password separately, configure
 the pipeline in HA's UI instead of bypassing authentication.
+
+`make voice-start` separately prepares the speech models and connects them through
+Wyoming. `make voice-configure` restores the versioned speech selection after
+intentional changes to `server.conf`. Plain Codex reconciliation preserves it.
 
 `make check-codex-home` tests bridge access/input handling and uses real Codex
 requests to toggle the virtual helper on then off. This consumes subscription

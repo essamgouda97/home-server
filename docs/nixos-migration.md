@@ -15,6 +15,7 @@ The current Ubuntu deployment is the working reference.
 | `prepare-creative.sh` and Compose `creative-init` | Filesystems, users/groups and tmpfiles permissions |
 | `config/homeassistant/http.json` | Reconcile network settings through the HA API after startup |
 | `containers/codex-home` and `configure-codex-home.py` | Build isolated CLI bridge; reconcile HA Assist pipeline through API |
+| `prepare-voice.py`, voice settings and model caches | Preload speech models; isolate runtime networking; preserve model manifests |
 | Tailscale authorization | Restore/re-authorize private state and approved route/DNS policy |
 | Mac helper scripts | Remain Mac-side; update paths if the checkout moves |
 

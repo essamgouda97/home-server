@@ -13,6 +13,8 @@ See [the server operations guide](docs/server-operations.md) for SSH, Codex, che
   Pi Zero and Arduino hardware, with Zigbee radio and ESPHome options.
 - [Codex in Home Assistant](docs/codex-home.md): subscription login, phone Assist,
   exposed-device control and a virtual switch to test it.
+- [Local voice](docs/local-voice.md): open-source Whisper/Piper speech, phone
+  microphone, fully local commands and the path to a DIY voice remote.
 - [Configuration boundaries and NixOS migration](docs/nixos-migration.md).
 - [Setup completion criteria](docs/creative-home-plan.md).
 
@@ -50,7 +52,7 @@ make setup
 make setup-vpn
 
 # 5. Complete storage/private credentials and Codex login prerequisites first:
-# docs/creative-storage.md and docs/codex-home.md
+# docs/creative-storage.md, docs/codex-home.md and docs/local-voice.md
 # Then start all services
 make start
 

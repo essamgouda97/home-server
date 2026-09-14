@@ -9,6 +9,9 @@ Servo is intentionally disabled. Preserve that state unless explicitly requested
 Never print `.env`, auth caches, Docker environment values, or credential-bearing
 application settings. Keep maintenance backups outside Git. Run `make check-network`
 from the Mac and `make check-server` from the server after infrastructure changes.
+The owner prefers open-source, self-hosted services and DIY hardware by default.
+Keep new setup reproducible in this repository. The existing subscription-backed
+Codex assistant is an explicit choice; keep speech processing local.
 
 ## Agent skills
 
