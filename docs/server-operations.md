@@ -102,9 +102,29 @@ return route for `10.0.0.0/24`; the host itself retains its normal default route
 
 Tailscale 1.102.4 was installed from its official signed Ubuntu package repository
 on the server and its notarized standalone macOS package on the Mac. The server's
-`tailscaled` system service is enabled at boot. Installation left all existing
-network and server health checks passing. Account sign-in and remote verification
-are still pending; installation alone does not enable remote access.
+`tailscaled` system service is enabled at boot. Both machines are signed in to
+the owner's personal tailnet. The server is `100.120.82.22`
+(`home-server.tail9bfb3e.ts.net`); its key expiry is disabled for unattended use.
+The Mac accepts Tailscale DNS and routes. Only `10.0.0.182/32` is approved as a
+subnet route, and restricted DNS forwards `lan` to `10.0.0.182`. Global DNS is not
+overridden. The stale Mac Wi-Fi DNS setting pointing to `192.168.0.124` was removed;
+ordinary DNS now comes from DHCP. Its prior values are backed up locally under
+`~/.local/state/home-server-maintenance/2026-09-14/tailscale/`.
+
+With Tailscale connected, use the same URLs in the table above from home or away,
+and use `ssh home-server` from the configured Mac. A direct Jellyfin fallback is
+`http://100.120.82.22:8096`. For qBittorrent use `http://torrents.lan` or
+`http://10.0.0.182:15080` through the approved route; its container uses a separate
+VPN and is not configured for direct connections to the Tailscale IP.
+
+Verification on 2026-09-14: the Mac's route to `10.0.0.182` uses the Tailscale
+`utun` interface, and the Tailscale DNS forwarder resolves both `jellyfin.lan`
+and `torrents.lan`. Both service hostnames returned HTTP 200. `make check-network`
+passed through the tunnel, and `make check-server` passed with all 18 containers
+running. Direct Jellyfin access using the Tailscale IP also passed. Both peers
+reported no Tailscale health errors. These checks exercised encrypted Tailscale
+traffic while both machines were physically at home; a cellular-network client
+test has not yet been recorded.
 
 To reproduce installation on Ubuntu 22.04:
 
@@ -122,6 +142,8 @@ Tailscale without routing access to the rest of the home network. Clients must
 accept Tailscale DNS and subnet routes (Linux clients need `--accept-routes`).
 The server deliberately does not accept tailnet DNS, avoiding a DNS loop.
 IPv4 forwarding is already enabled by Docker on this host.
+For an unattended server, disable key expiry on its machine page. Leave client
+device expiry enabled. Removing the server from the tailnet revokes its access.
 
 Keep Tailscale connected on the Mac and sign in to the same account on phones or
 other clients. Retain each service's existing login. This setup does not require
