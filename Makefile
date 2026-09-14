@@ -4,7 +4,7 @@
 
 # Load server config (paths are configurable in server.conf)
 include server.conf
-export SERVER_DATA_DIR SERVER_IP LAN_SUBNET TZ
+export SERVER_DATA_DIR SERVER_IP LAN_SUBNET TZ CREATIVE_ROOT HOME_SERVER_SECRETS_DIR
 
 # Compose command — media stack only (agents run as systemd services)
 COMPOSE := docker compose --env-file server.conf --env-file .env -f docker-compose.yml
@@ -678,6 +678,41 @@ urls: ## Show service URLs usable from the LAN
 	@echo "Portainer: http://portainer.lan (http://$(SERVER_IP):9000)"
 	@echo "Speedtest: http://speedtest.lan (http://$(SERVER_IP):8765)"
 	@echo "SSH: ssh home-server"
+	@echo "Creative web drive: http://files.lan"
+	@echo "Creative Finder drive: smb://home-server.lan/Creative"
+	@echo "Home Assistant: http://assistant.lan"
+
+.PHONY: creative-start creative-mount creative-backup-mac home-config-check home-proxies
+creative-start: ## Start storage and Home Assistant after documented host/credential setup
+	set -eu
+	python3 scripts/init-filebrowser.py
+	$(COMPOSE) up -d --build samba filebrowser homeassistant
+
+creative-mount: ## Mount Creative in Finder on the Mac
+	python3 scripts/mount-creative.py
+
+creative-backup-mac: ## Snapshot Resolve projects and copy to mounted Creative drive
+	python3 scripts/backup-resolve.py
+
+home-config-check: ## Validate Home Assistant configuration on the server
+	$(COMPOSE) exec -T homeassistant python -m homeassistant --script check_config --config /config
+
+home-proxies: ## Reconcile repo-owned files.lan and assistant.lan NPM routes (server)
+	python3 scripts/configure-creative-proxies.py
+
+.PHONY: check-creative backup-home-services
+check-creative: ## On Mac, verify authenticated uploads/downloads and Finder interoperability
+	python3 scripts/check-creative.py
+
+.PHONY: home-configure test-ingest
+home-configure: ## Reconcile and confirm Home Assistant HTTP settings using its API
+	python3 scripts/configure-homeassistant.py
+
+test-ingest: ## Verify safe footage ingest on the real SMB share using synthetic files
+	python3 scripts/test-ingest.py
+
+backup-home-services: ## On server, briefly pause HA/File Browser for a consistent private backup
+	python3 scripts/backup-home-services.py
 
 .PHONY: check-network check-server
 check-network: ## Test LAN DNS, service ports, and reverse proxy

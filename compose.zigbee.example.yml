@@ -1,0 +1,7 @@
+# Copy outside Git or set ZIGBEE_DEVICE to your real /dev/serial/by-id path.
+# Use with: docker compose ... -f docker-compose.yml -f compose.zigbee.example.yml up -d homeassistant
+# Do not enable before a coordinator is plugged in and identified.
+services:
+  homeassistant:
+    devices:
+      - "${ZIGBEE_DEVICE:?Set the real coordinator path}:/dev/zigbee"

@@ -15,6 +15,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 SERVICES = {
+    "files": (8082, "/", {200}),
+    "assistant": (8123, "/", {200, 302}),
     "home": (3000, "/", {200, 302, 307}),
     "jellyfin": (8096, "/System/Info/Public", {200}),
     "vue": (8097, "/", {200}),

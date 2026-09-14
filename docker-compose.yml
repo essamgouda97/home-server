@@ -1,5 +1,101 @@
 services:
 
+  # ─── CREATIVE STORAGE AND SMART HOME ────────────────
+  creative-init:
+    image: home-server/samba:local
+    build: ./containers/samba
+    profiles: [setup]
+    network_mode: none
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        install -d -o 1000 -g 1000 -m 0770 /creative
+        for folder in Projects Assets Exports ProjectBackups Incoming; do
+          install -d -o 1000 -g 1000 -m 0770 "/creative/$$folder"
+        done
+        install -d -o 1000 -g 1000 -m 0700 /state/filebrowser /state/samba /state/homeassistant
+    volumes:
+      - ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}:/creative
+      - ${SERVER_DATA_DIR:-/mnt/server}/filebrowser:/state/filebrowser
+      - ${SERVER_DATA_DIR:-/mnt/server}/samba:/state/samba
+      - ${SERVER_DATA_DIR:-/mnt/server}/homeassistant:/state/homeassistant
+
+  samba:
+    build: ./containers/samba
+    image: home-server/samba:local
+    container_name: samba
+    restart: unless-stopped
+    ports:
+      - "${SERVER_IP:-10.0.0.182}:445:445"
+    volumes:
+      - type: bind
+        source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}
+        target: /shares/Creative
+        bind:
+          create_host_path: false
+      - ./config/samba/smb.conf:/etc/samba/smb.conf:ro
+      - ${SERVER_DATA_DIR:-/mnt/server}/samba:/var/lib/samba
+    secrets:
+      - creative_password
+    networks:
+      - creative
+    healthcheck:
+      test: ["CMD-SHELL", "smbcontrol smbd ping >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  filebrowser:
+    image: filebrowser/filebrowser:v2.63.23@sha256:a469ea076d4a1b4b1d86a41d130f2f536cd9da996a2b1fb39c0d7635f9d89b9a
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "1000:1000"
+    entrypoint: ["/bin/filebrowser"]
+    command: ["--config", "/config/settings.json"]
+    ports:
+      - "${SERVER_IP:-10.0.0.182}:8082:8080"
+    volumes:
+      - type: bind
+        source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}
+        target: /srv
+        bind:
+          create_host_path: false
+      - ${SERVER_DATA_DIR:-/mnt/server}/filebrowser:/database
+      - ./config/filebrowser/settings.json:/config/settings.json:ro
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:2026.9.2@sha256:a1bc133af84ee6505fe2c266d9805b7c75b780dfdc188edfee3b11e8f3cd8efe
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 60s
+    environment:
+      TZ: ${TZ:-America/Edmonton}
+    volumes:
+      - ${SERVER_DATA_DIR:-/mnt/server}/homeassistant:/config
+      - ./config/homeassistant/configuration.yaml:/config/configuration.yaml:ro
+      - ./config/homeassistant/packages:/config/packages:ro
+      - ./config/homeassistant/blueprints:/config/blueprints/automation/home-server:ro
+      - /etc/localtime:/etc/localtime:ro
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://${SERVER_IP:-10.0.0.182}:8123/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
   # ─── VPN ────────────────────────────────────────────
   vpn:
     container_name: vpn-gateway
@@ -356,7 +452,13 @@ services:
     networks:
       - proxy
 
+secrets:
+  creative_password:
+    file: ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/creative_password
+
 networks:
+  creative:
+    driver: bridge
   proxy:
     driver: bridge
     ipam:

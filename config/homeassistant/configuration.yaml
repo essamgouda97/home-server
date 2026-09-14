@@ -1,0 +1,41 @@
+homeassistant:
+  name: Home
+  time_zone: America/Edmonton
+  unit_system: metric
+  currency: CAD
+  country: CA
+  internal_url: !secret internal_url
+  external_url: !secret external_url
+  packages: !include_dir_named packages
+
+# Explicit core integrations: no local Bluetooth adapter is attached. Remote
+# ESPresense receivers use MQTT; a future Bluetooth proxy can be enabled in UI.
+assist_pipeline:
+conversation:
+dhcp:
+energy:
+file:
+frontend:
+history:
+homeassistant_alerts:
+logbook:
+media_source:
+mobile_app:
+my:
+ssdp:
+stream:
+sun:
+usb:
+webhook:
+zeroconf:
+
+# HA 2026.8+ stores HTTP settings through its API. Desired settings live in
+# http.json and are reconciled/confirmed by configure-homeassistant.py.
+
+recorder:
+  purge_keep_days: 14
+  commit_interval: 10
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml

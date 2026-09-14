@@ -1,4 +1,12 @@
 .env
+__pycache__/
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+secrets/
+secrets.yaml
+.storage/
 
 # Agent instances (contain personal data, secrets, memories)
 /agents/

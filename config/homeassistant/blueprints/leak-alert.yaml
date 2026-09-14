@@ -1,0 +1,28 @@
+blueprint:
+  name: Water leak alert
+  description: Notify a selected phone and create a persistent alert when a real leak sensor detects moisture. Pair the sensor and phone first; then select them here.
+  domain: automation
+  input:
+    leak_sensor:
+      name: Water leak sensor
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: moisture
+    notify_phone:
+      name: Phone notification action
+      description: Choose your Home Assistant mobile app notification action.
+      selector:
+        action: {}
+trigger:
+  - platform: state
+    entity_id: !input leak_sensor
+    to: "on"
+action:
+  - action: persistent_notification.create
+    data:
+      title: Water leak detected
+      message: "{{ trigger.to_state.name }} detected water. Check the area."
+  - choose: []
+    default: !input notify_phone
+mode: single

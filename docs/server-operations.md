@@ -80,10 +80,15 @@ pages were inspected: this firmware exposes no custom DHCP DNS setting.
 | Portainer | http://portainer.lan | 9000 |
 | NZBGet | http://nzbget.lan | 6789 |
 | Speedtest Tracker | http://speedtest.lan | 8765 |
+| Creative Drive web UI | http://files.lan | 8082 |
+| Creative Finder drive | smb://home-server.lan/Creative | 445 |
+| Home Assistant | http://assistant.lan | 8123 |
 | Nginx Proxy Manager admin | http://10.0.0.182:81 | 81 |
 
 Additional containers: dnsmasq, VPN gateway, FlareSolverr, Recyclarr, Watchtower.
-Total: 18. Watchtower is configured to monitor images, not automatically update them.
+Total: 21 persistent containers after adding creative storage and Home Assistant.
+See [Creative Drive](creative-storage.md) and [smart home](smart-home.md) for setup,
+backup and hardware requirements. Watchtower monitors images without auto-updating.
 It explicitly uses Docker API 1.44 for compatibility with Docker Engine 29.
 DNS's web admin binds only to loopback; tunnel port 5380 over SSH if needed.
 

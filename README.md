@@ -1,8 +1,16 @@
-# Home Server - Docker Media Stack + AI Agents
+# Home Server — Media, Creative Storage, and Smart Home
 
-A complete media server with automated downloading, streaming, and AI agent support via OpenClaw.
+A Docker Compose home server for media, private creative storage, Home Assistant,
+and project work with Codex. The historical OpenClaw/Servo agent is disabled.
 
 See [the server operations guide](docs/server-operations.md) for SSH, Codex, checks, recovery, and current limitations.
+
+- [Creative Drive and Resolve workflow](docs/creative-storage.md): web uploads,
+  Finder access, verified DJI footage import, and project backups.
+- [Home Assistant and device plan](docs/smart-home.md): leak sensor, Chromecast,
+  push-to-talk voice, and room presence without microphones everywhere.
+- [Configuration boundaries and NixOS migration](docs/nixos-migration.md).
+- [Setup completion criteria](docs/creative-home-plan.md).
 
 **Inspired by:** https://github.com/GreenFrogSB/LMDS
 
