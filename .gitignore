@@ -1,4 +1,11 @@
 .env
 
 # Agent instances (contain personal data, secrets, memories)
-agents/
+/agents/
+
+# Private maintenance snapshots and generated state
+backups/
+*.bak.*
+.maintenance/
+memory/
+MEMORY.md

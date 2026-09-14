@@ -2,6 +2,8 @@
 
 A complete media server with automated downloading, streaming, and AI agent support via OpenClaw.
 
+See [the server operations guide](docs/server-operations.md) for SSH, Codex, checks, recovery, and current limitations.
+
 **Inspired by:** https://github.com/GreenFrogSB/LMDS
 
 ---
@@ -56,7 +58,7 @@ Key services (use `*.lan` URLs after setting DNS — see below):
 - **Radarr**: http://radarr.lan - Movie management
 - **Portainer**: http://portainer.lan - Docker management
 
-> **DNS Setup:** Set your router's DNS to `192.168.0.124` so all devices resolve `*.lan` URLs automatically. Or manually set DNS per device.
+> **DNS Setup:** The server has a router DHCP reservation at `10.0.0.182`. To resolve `*.lan` on a Mac while preserving VPN DNS, run `sudo sh scripts/setup-mac-dns.sh`. Other clients can use `10.0.0.182` as DNS, or use the direct IP/port URLs from `make urls`.
 
 ---
 
@@ -67,7 +69,6 @@ Key services (use `*.lan` URLs after setting DNS — see below):
 |---------|------|---------|
 | **Sonarr** | 8989 | TV show automation and management |
 | **Radarr** | 7878 | Movie automation and management |
-| **Bazarr** | 6767 | Subtitle management |
 
 ### Media Streaming
 | Service | Port | URL | Purpose |
@@ -92,11 +93,11 @@ Key services (use `*.lan` URLs after setting DNS — see below):
 | Service | Port | URL | Purpose |
 |---------|------|-----|---------|
 | **Nginx Proxy Manager** | 80/443/81 | - | Reverse proxy (clean .lan URLs) |
-| **Homepage** | 3000 | `home.lan` | Dashboard with live service stats |
+| **Homarr** | 3000 | `home.lan` | Dashboard with live service stats |
 | **Uptime Kuma** | 3001 | `status.lan` | Service monitoring |
 | **Watchtower** | - | - | Docker image update notifications |
 | **Recyclarr** | - | - | TRaSH Guides quality profile sync |
-| **dnsmasq** | 53 | - | Local DNS (*.lan → 192.168.0.124) |
+| **dnsmasq** | 53 | - | Local DNS (*.lan → 10.0.0.182) |
 | **VPN Gateway** | - | - | OpenVPN client for qBittorrent |
 | **Portainer** | 9000 | `portainer.lan` | Docker container management |
 
@@ -260,7 +261,7 @@ make logs SERVICE=sonarr  # View specific service logs
 ```bash
 make start-media       # Start Sonarr, Radarr, Jellyfin
 make start-downloaders # Start qBittorrent, NZBGet
-make start-indexers    # Start Prowlarr, Jackett
+make start-indexers    # Start Prowlarr, FlareSolverr
 make start-agents      # Start all AI agents
 ```
 

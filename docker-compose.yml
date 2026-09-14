@@ -23,7 +23,7 @@ services:
       PUID: 1000
       PGID: 1000
       TZ: UTC+0
-      ROUTE: '192.168.1.0/24'
+      ROUTE: '${LAN_SUBNET:-10.0.0.0/24}'
     networks:
       - proxy
     read_only: true
@@ -54,6 +54,9 @@ services:
     image: jc21/nginx-proxy-manager:latest
     container_name: npm
     restart: unless-stopped
+    depends_on:
+      dnsmasq:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
@@ -67,15 +70,24 @@ services:
   dnsmasq:
     image: jpillora/dnsmasq
     container_name: dnsmasq
-    restart: unless-stopped
+    restart: "no"  # managed by systemd (dnsmasq-docker.service) to ensure network is ready
+    # This image's BusyBox nslookup uses resolv.conf even with a server argument.
+    dns:
+      - 127.0.0.1
     ports:
-      - "192.168.0.124:53:53/udp"
-      - "192.168.0.124:53:53/tcp"
-      - "5380:8080"    # Web UI
+      - "${SERVER_IP:-10.0.0.182}:53:53/udp"
+      - "${SERVER_IP:-10.0.0.182}:53:53/tcp"
+      - "127.0.0.1:5380:8080"    # Admin UI through SSH tunnel
     volumes:
       - ${SERVER_DATA_DIR:-/mnt/server}/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
     cap_add:
       - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "nslookup home.lan 127.0.0.1 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     networks:
       - proxy
 
@@ -89,6 +101,7 @@ services:
       - WATCHTOWER_SCHEDULE=0 0 4 * * *   # 4 AM daily
       - WATCHTOWER_NOTIFICATIONS=shoutrrr
       - WATCHTOWER_MONITOR_ONLY=true       # Notify only, don't auto-update
+      - DOCKER_API_VERSION=1.44            # Compatible with Docker Engine 29
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -101,15 +114,13 @@ services:
     ports:
       - "3000:7575"
     volumes:
-      - /mnt/server/homarr/configs:/appdata/configs
-      - /mnt/server/homarr/data:/appdata/data
-      - /mnt/server/homarr/icons:/appdata/icons
+      - ${SERVER_DATA_DIR:-/mnt/server}/homarr/appdata:/appdata
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - TZ=America/Edmonton
       - AUTH_PROVIDER=credentials
-      - AUTH_SECRET=supersecrethomarrkey2026
-      - SECRET_ENCRYPTION_KEY=47bf5777d6df5346dc8ec034d6a6afb6b98b5bcac5a26f8dd68b0a45f776992c
+      - AUTH_SECRET=${HOMARR_AUTH_SECRET}
+      - SECRET_ENCRYPTION_KEY=${HOMARR_ENCRYPTION_KEY}
     networks:
       - proxy
 
@@ -146,8 +157,8 @@ services:
     image: linuxserver/radarr
     container_name: radarr
     environment:
-      - PUID=0
-      - PGID=0
+      - PUID=1000
+      - PGID=1000
       - TZ=${TZ:-America/Edmonton}
       - UMASK=022
     volumes:
@@ -235,6 +246,12 @@ services:
     network_mode: "service:vpn"
     depends_on:
       - vpn
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     restart: unless-stopped
 
   nzbget:

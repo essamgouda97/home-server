@@ -3,10 +3,11 @@
 .SILENT:
 
 # Load server config (paths are configurable in server.conf)
-SERVER_DATA_DIR := $(shell grep -E '^SERVER_DATA_DIR=' server.conf 2>/dev/null | cut -d= -f2 || echo /mnt/server)
+include server.conf
+export SERVER_DATA_DIR SERVER_IP LAN_SUBNET TZ
 
 # Compose command — media stack only (agents run as systemd services)
-COMPOSE := docker compose -f docker-compose.yml
+COMPOSE := docker compose --env-file server.conf --env-file .env -f docker-compose.yml
 
 # Check if .env exists, create minimal one if not
 .ONESHELL:
@@ -171,17 +172,19 @@ status: check-env ## Show service status (Docker + agents)
 
 ##@ Service Management
 
-start: check-env ## Start all services (Docker infra + agents)
+start: check-env ## Start Docker services and enabled agents
 	$(call section,Starting Services)
 	$(call info,Starting Docker services...)
-	$(COMPOSE) up -d 2>&1 | grep -v "Pulling\|Pulled\|variable is not set" || true
+	$(COMPOSE) up -d || exit $$?
 	sleep 2
 	@if [ -d agents ] && [ -n "$$(ls -A agents 2>/dev/null)" ]; then \
 		echo "$(BLUE)$(ARROW)$(NC) Starting agents..."; \
 		for dir in agents/*/; do \
 			[ -d "$$dir" ] || continue; \
 			name=$$(basename "$$dir"); \
-			systemctl --user start "openclaw@$$name" 2>/dev/null || true; \
+			if systemctl --user is-enabled --quiet "openclaw@$$name"; then \
+				systemctl --user start "openclaw@$$name" || exit $$?; \
+			fi; \
 		done; \
 	fi
 	$(call success,All services started!)
@@ -278,12 +281,10 @@ start-downloaders: ## Start download clients (qBittorrent, NZBGet, VPN)
 	$(call success,Download clients started!)
 	echo ""
 
-start-indexers: ## Start indexers (Prowlarr, Jackett, FlareSolverr)
+start-indexers: ## Start indexers (Prowlarr, FlareSolverr)
 	$(call section,Starting Indexers)
 	$(call info,Starting Prowlarr...)
 	$(COMPOSE) up -d prowlarr
-	$(call info,Starting Jackett...)
-	$(COMPOSE) up -d jackett
 	$(call info,Starting FlareSolverr...)
 	$(COMPOSE) up -d flaresolverr
 	$(call success,Indexers started!)
@@ -301,7 +302,7 @@ stop-downloaders: ## Stop download clients
 
 stop-indexers: ## Stop indexers
 	$(call section,Stopping Indexers)
-	$(COMPOSE) stop prowlarr jackett flaresolverr
+	$(COMPOSE) stop prowlarr flaresolverr
 	$(call success,Indexers stopped!)
 
 ##@ Agent Management
@@ -662,40 +663,28 @@ qbittorrent-logs: ## Show qBittorrent logs
 
 ##@ Information
 
-urls: ## Show all service URLs
-	$(call section,Service URLs)
-	echo "$(BOLD)$(GREEN)Media Management$(NC)"
-	echo "  Sonarr      $(CYAN)→$(NC) http://localhost:8989"
-	echo "  Radarr      $(CYAN)→$(NC) http://localhost:7878"
-	echo "  Bazarr      $(CYAN)→$(NC) http://localhost:6767"
-	echo ""
-	echo "$(BOLD)$(GREEN)Media Streaming$(NC)"
-	echo "  Jellyfin    $(CYAN)→$(NC) http://localhost:8096"
-	echo "  Jellyseerr  $(CYAN)→$(NC) http://localhost:5055"
-	echo ""
-	echo "$(BOLD)$(GREEN)Download Clients$(NC)"
-	echo "  qBittorrent $(CYAN)→$(NC) http://localhost:15080"
-	echo "  NZBGet      $(CYAN)→$(NC) http://localhost:6789"
-	echo ""
-	echo "$(BOLD)$(GREEN)Indexers$(NC)"
-	echo "  Prowlarr    $(CYAN)→$(NC) http://localhost:9696"
-	echo "  Jackett     $(CYAN)→$(NC) http://localhost:9117"
-	echo ""
-	echo "$(BOLD)$(GREEN)Infrastructure$(NC)"
-	echo "  Portainer   $(CYAN)→$(NC) http://localhost:9000"
-	echo ""
-	@if [ -d agents ] && [ -n "$$(ls -A agents 2>/dev/null)" ]; then \
-		echo "$(BOLD)$(GREEN)Agents$(NC)"; \
-		for dir in agents/*/; do \
-			[ -d "$$dir" ] || continue; \
-			name=$$(basename "$$dir"); \
-			port=$$(grep -E '^OPENCLAW_PORT=' "$$dir/.env" 2>/dev/null | cut -d= -f2 || echo "?"); \
-			printf "  %-12s $(CYAN)→$(NC) http://localhost:%s\n" "$$name" "$$port"; \
-		done; \
-		echo ""; \
-	fi
-	echo "$(DIM)Remote access: ssh -L <port>:localhost:<port> egouda@<server-ip>$(NC)"
-	echo ""
+urls: ## Show service URLs usable from the LAN
+	@echo "Home server: $(SERVER_IP)"
+	@echo "Dashboard: http://home.lan (http://$(SERVER_IP):3000)"
+	@echo "Jellyfin: http://jellyfin.lan (http://$(SERVER_IP):8096)"
+	@echo "Jellyfin Vue: http://vue.lan (http://$(SERVER_IP):8097)"
+	@echo "Requests: http://requests.lan (http://$(SERVER_IP):5055)"
+	@echo "Sonarr: http://sonarr.lan (http://$(SERVER_IP):8989)"
+	@echo "Radarr: http://radarr.lan (http://$(SERVER_IP):7878)"
+	@echo "Torrents: http://torrents.lan (http://$(SERVER_IP):15080)"
+	@echo "Prowlarr: http://prowlarr.lan (http://$(SERVER_IP):9696)"
+	@echo "NZBGet: http://nzbget.lan (http://$(SERVER_IP):6789)"
+	@echo "Monitoring: http://status.lan (http://$(SERVER_IP):3001)"
+	@echo "Portainer: http://portainer.lan (http://$(SERVER_IP):9000)"
+	@echo "Speedtest: http://speedtest.lan (http://$(SERVER_IP):8765)"
+	@echo "SSH: ssh home-server"
+
+.PHONY: check-network check-server
+check-network: ## Test LAN DNS, service ports, and reverse proxy
+	python3 scripts/check-health.py --host $(SERVER_IP)
+
+check-server: ## Run on server: also inspect containers, app health, disks, Codex
+	python3 scripts/check-health.py --host $(SERVER_IP) --local
 
 dashboard: ## Quick overview dashboard
 	$(HEADER)

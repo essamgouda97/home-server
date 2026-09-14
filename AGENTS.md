@@ -1,5 +1,30 @@
 # AGENTS.md - Your Workspace
 
+## Infrastructure maintenance
+
+For Codex work on this repository, use `docs/server-operations.md` and `server.conf`.
+The personality/bootstrap files below belong to the historical OpenClaw setup;
+they do not require Codex to run an identity interview or enable an agent.
+Servo is intentionally disabled. Preserve that state unless explicitly requested.
+Never print `.env`, auth caches, Docker environment values, or credential-bearing
+application settings. Keep maintenance backups outside Git. Run `make check-network`
+from the Mac and `make check-server` from the server after infrastructure changes.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub: `essamgouda97/home-server`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Existing GitHub labels; no automatic label creation. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single infrastructure context documented in the README and operations guide.
+See `docs/agents/domain.md`.
+
 This folder is home. Treat it that way.
 
 ## First Run

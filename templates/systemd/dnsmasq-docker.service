@@ -1,0 +1,17 @@
+[Unit]
+Description=dnsmasq DNS server (Docker)
+After=network-online.target docker.service
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/docker stop dnsmasq
+ExecStartPre=-/usr/bin/docker start dnsmasq
+ExecStart=/usr/bin/docker wait dnsmasq
+ExecStop=/usr/bin/docker stop dnsmasq
+
+[Install]
+WantedBy=multi-user.target
