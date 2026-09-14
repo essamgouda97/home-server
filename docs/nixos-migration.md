@@ -14,6 +14,7 @@ The current Ubuntu deployment is the working reference.
 | `HOME_SERVER_SECRETS_DIR` | Runtime secrets from sops-nix/agenix or private manual provisioning |
 | `prepare-creative.sh` and Compose `creative-init` | Filesystems, users/groups and tmpfiles permissions |
 | `config/homeassistant/http.json` | Reconcile network settings through the HA API after startup |
+| `containers/codex-home` and `configure-codex-home.py` | Build isolated CLI bridge; reconcile HA Assist pipeline through API |
 | Tailscale authorization | Restore/re-authorize private state and approved route/DNS policy |
 | Mac helper scripts | Remain Mac-side; update paths if the checkout moves |
 
@@ -21,8 +22,8 @@ Preserve UID/GID 1000 for creative files, the SSD mount, the media pool's branch
 order/policy, and existing service data. Do not put passwords, `.env`, HA
 `.storage`, File Browser's database, SMB passdb, or Tailscale state in Git or
 the world-readable Nix store. Image digests are pinned for new upstream services
-and the Samba base image; Debian package repositories are live, so the Samba
-build is not fully bit-for-bit reproducible. Preserve its built image or use
+and the Samba/Codex base images; Debian package repositories are live, so these
+builds are not fully bit-for-bit reproducible. Preserve built images or use
 a dated package snapshot if strict rebuild reproducibility becomes necessary.
 
 Migration order:

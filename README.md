@@ -9,6 +9,10 @@ See [the server operations guide](docs/server-operations.md) for SSH, Codex, che
   Finder access, verified DJI footage import, and project backups.
 - [Home Assistant and device plan](docs/smart-home.md): leak sensor, Chromecast,
   push-to-talk voice, and room presence without microphones everywhere.
+- [DIY gateway and sensors](docs/diy-smart-home.md): use the existing Pi 4,
+  Pi Zero and Arduino hardware, with Zigbee radio and ESPHome options.
+- [Codex in Home Assistant](docs/codex-home.md): subscription login, phone Assist,
+  exposed-device control and a virtual switch to test it.
 - [Configuration boundaries and NixOS migration](docs/nixos-migration.md).
 - [Setup completion criteria](docs/creative-home-plan.md).
 
@@ -45,7 +49,9 @@ make setup
 # 4. Setup VPN (place your vpn.conf in $SERVER_DATA_DIR/vpn/)
 make setup-vpn
 
-# 5. Start all services
+# 5. Complete storage/private credentials and Codex login prerequisites first:
+# docs/creative-storage.md and docs/codex-home.md
+# Then start all services
 make start
 
 # 6. Check status

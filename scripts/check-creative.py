@@ -32,8 +32,8 @@ def call(path, method='GET', data=None):
         return response.read()
 
 name = '.home-server-check-' + uuid.uuid4().hex + '.bin'
-relative = 'Incoming/' + name
-local = share / relative
+relative = 'Creative/' + name
+local = share / name
 payload = os.urandom(256 * 1024)
 try:
     local.write_bytes(payload)

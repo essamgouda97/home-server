@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private app-state backup; briefly pauses File Browser and HA, not media."""
+"""Private app-state backup; briefly pauses File Browser, HA and Codex, not media."""
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -20,7 +20,7 @@ destination.chmod(0o700)
 stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 name = 'home-services-' + stamp + '.tar.gz'
 running = []
-for container in ['filebrowser', 'homeassistant']:
+for container in ['filebrowser', 'homeassistant', 'codex-home']:
     result = subprocess.run(['docker', 'inspect', '--format', '{{.State.Running}}', container],
                             capture_output=True, text=True)
     if result.returncode == 0 and result.stdout.strip() == 'true':
@@ -46,9 +46,9 @@ with tarfile.open(archive) as tf:
         raise SystemExit('Archive incomplete; do not use it for recovery.')
     with tempfile.TemporaryDirectory(prefix='home-services-restore-') as tmp:
         restore = Path(tmp)
-        for name in ['homeassistant/home-assistant_v2.db', 'filebrowser/filebrowser.db']:
-            target = restore / Path(name).name
-            with tf.extractfile(name) as src, target.open('wb') as dst:
+        for member_name in ['homeassistant/home-assistant_v2.db', 'filebrowser/filebrowser.db']:
+            target = restore / Path(member_name).name
+            with tf.extractfile(member_name) as src, target.open('wb') as dst:
                 shutil.copyfileobj(src, dst)
         with sqlite3.connect((restore / 'home-assistant_v2.db').as_uri() + '?mode=ro', uri=True) as db:
             if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':

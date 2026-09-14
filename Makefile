@@ -6,7 +6,7 @@
 include server.conf
 export SERVER_DATA_DIR SERVER_IP LAN_SUBNET TZ CREATIVE_ROOT HOME_SERVER_SECRETS_DIR
 
-# Compose command — media stack only (agents run as systemd services)
+# Compose command for media, storage, Home Assistant and the Codex bridge.
 COMPOSE := docker compose --env-file server.conf --env-file .env -f docker-compose.yml
 
 # Check if .env exists, create minimal one if not
@@ -685,8 +685,23 @@ urls: ## Show service URLs usable from the LAN
 .PHONY: creative-start creative-mount creative-backup-mac home-config-check home-proxies
 creative-start: ## Start storage and Home Assistant after documented host/credential setup
 	set -eu
+	python3 scripts/prepare-codex-home.py
 	python3 scripts/init-filebrowser.py
-	$(COMPOSE) up -d --build samba filebrowser homeassistant
+	$(COMPOSE) up -d --build samba filebrowser codex-home homeassistant
+
+.PHONY: codex-home-start codex-home-configure check-codex-home
+codex-home-start: ## Build/start the isolated subscription-backed Codex bridge (server)
+	set -eu
+	python3 scripts/prepare-codex-home.py
+	$(COMPOSE) up -d --build codex-home homeassistant
+
+codex-home-configure: ## Set Codex as the default Assist agent after HA starts (server)
+	python3 scripts/configure-codex-home.py
+
+check-codex-home: ## Exercise Codex against only the virtual demo switch (uses subscription quota)
+	set -eu
+	python3 scripts/check-codex-bridge.py
+	python3 scripts/configure-codex-home.py --check
 
 creative-mount: ## Mount Creative in Finder on the Mac
 	python3 scripts/mount-creative.py
@@ -700,9 +715,12 @@ home-config-check: ## Validate Home Assistant configuration on the server
 home-proxies: ## Reconcile repo-owned files.lan and assistant.lan NPM routes (server)
 	python3 scripts/configure-creative-proxies.py
 
-.PHONY: check-creative backup-home-services
+.PHONY: check-creative check-files backup-home-services
 check-creative: ## On Mac, verify authenticated uploads/downloads and Finder interoperability
 	python3 scripts/check-creative.py
+
+check-files: ## On Mac, verify web read/write/delete across live server folders with unique probes
+	python3 scripts/check-files.py
 
 .PHONY: home-configure test-ingest
 home-configure: ## Reconcile and confirm Home Assistant HTTP settings using its API
@@ -711,7 +729,7 @@ home-configure: ## Reconcile and confirm Home Assistant HTTP settings using its 
 test-ingest: ## Verify safe footage ingest on the real SMB share using synthetic files
 	python3 scripts/test-ingest.py
 
-backup-home-services: ## On server, briefly pause HA/File Browser for a consistent private backup
+backup-home-services: ## On server, briefly pause HA/File Browser/Codex for a private backup
 	python3 scripts/backup-home-services.py
 
 .PHONY: check-network check-server

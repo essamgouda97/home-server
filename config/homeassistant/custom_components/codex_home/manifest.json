@@ -1,0 +1,10 @@
+{
+  "domain": "codex_home",
+  "name": "Codex Home",
+  "version": "0.1.0",
+  "documentation": "https://github.com/essamgouda97/home-server/blob/main/docs/codex-home.md",
+  "config_flow": true,
+  "dependencies": ["conversation"],
+  "codeowners": [],
+  "iot_class": "cloud_polling"
+}

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "speech": {"type": "string"},
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "arguments_json": {"type": "string"}
+        },
+        "required": ["name", "arguments_json"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["speech", "tool_calls"],
+  "additionalProperties": false
+}

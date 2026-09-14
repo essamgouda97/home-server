@@ -1,8 +1,31 @@
-# Creative Drive
+# Server files and Creative Drive
 
 The owner selected a web file manager plus a Finder drive for DJI footage and
-DaVinci Resolve editing. Both services use the same ordinary SSD filesystem;
-there is no application database holding the originals.
+DaVinci Resolve editing, then requested access to existing codebases, media and
+other server files with editing/deletion enabled. File Browser exposes live bind
+mounts; it does not copy, sync or move existing data. Finder's Creative share
+continues to use the same ordinary SSD directory as the web UI's Creative folder.
+
+| Web folder | Live server location | Access |
+|---|---|---|
+| Creative | `/srv/mergerfs/ssd/creative` | Read/write |
+| Code | `/home/egouda/workspace` | Read/write |
+| Repositories | `/home/egouda/repos` | Read/write |
+| Media | `/mnt/server/media` | Read/write |
+| Downloads | `/mnt/server/downloads` | Read/write |
+| Home | `/home/egouda` | Read/write |
+| Storage | `/mnt` (merged SSD/HDD data pool) | Read/write where the Linux user has permission |
+
+`Code` is also `Home/workspace`, and `Media` is also `Storage/server/media`:
+these are convenient views of the same data, not duplicate copies. Existing
+projects have not been moved into Creative. New uploads belong inside one of
+these folders; the catalog root itself is read-only. The process runs as UID/GID
+1000 and cannot bypass host ownership/permissions. System-owned files remain
+protected by Linux permissions. This is the home directory and storage pool,
+not an administrative file manager for the operating-system root filesystem.
+Home and Storage include private dotfiles/application state readable by that
+user; keep this account private. Anonymous access, public shares and commands
+remain disabled. Do not use the file editor to modify a live application's DB.
 
 | Access | Address |
 |---|---|
@@ -13,7 +36,7 @@ there is no application database holding the originals.
 
 Use Tailscale with the same account outside home. Tailscale's existing `/32`
 route and split DNS cover these addresses. The username is `egouda`; use the
-generated password saved in the Mac's login Keychain under `files.lan` and
+password saved in the Mac's login Keychain under `files.lan` and
 `home-server.lan`. Open Keychain Access and search for either name to retrieve
 it after authenticating to macOS. New devices need that password too.
 To choose a replacement password, run `python3 scripts/setup-mac-creative.py
@@ -31,8 +54,8 @@ the router or enable Tailscale Funnel for them.
 ## Layout and editing
 
 The share maps directly to `/srv/mergerfs/ssd/creative`, outside the combined
-media folders. It contains `Projects`, `Assets`, `Exports`, `ProjectBackups`, and
-`Incoming`. `server.conf` owns the path. The SSD must be mounted before service
+media folders. Initial setup creates `Projects`, `Assets`, `Exports`, `ProjectBackups`, and
+`Incoming`; the owner can organize these folders freely. `server.conf` owns the path. The SSD must be mounted before service
 startup; Docker is configured not to silently create a missing share directory.
 
 For a shoot, use a unique project and card name:
@@ -112,14 +135,18 @@ python3 scripts/setup-mac-creative.py --generate
 On the server:
 
 ```sh
+codex login status # sign in with codex login --device-auth if needed
 make creative-start
 make home-proxies
 python3 scripts/configure-homeassistant.py
+make codex-home-configure
 make home-config-check
 make check-server
 ```
 
-On the Mac: `make creative-mount`, `make check-creative`, then `make check-network`.
+On the Mac: `make creative-mount`, `make check-creative`, `make check-files`, then `make check-network`.
+`check-files` creates, overwrites and deletes only unique synthetic probe files
+and verifies their hashes at the corresponding host paths over SSH.
 Install the daily Resolve backup with `python3 scripts/install-mac-creative-backup.py`
 and run `make creative-backup-mac` once. Store credentials
 in a password manager for access from additional devices. File Browser's
@@ -135,14 +162,14 @@ up -d --force-recreate SERVICE`) so it sees the new file inode. HA network setti
 are reconciled separately through its API; see the smart-home guide.
 
 Run `make backup-home-services` on the server for a consistent private snapshot
-of Home Assistant, File Browser and runtime secrets. It briefly stops those two
-services and restarts them afterward. Archives live under
+of Home Assistant, File Browser and runtime secrets, including Codex auth. It briefly
+stops Home Assistant, File Browser and the Codex bridge and restarts them afterward. Archives live under
 `~/.local/state/home-server-backups` with private permissions. Samba credentials
 are regenerated from the password secret. This app-state backup is manual;
 the Resolve project backup is daily. Copy app-state archives to independent
 storage, and restore the matching Git revision alongside them.
 
-To stop the new services, use Compose `stop samba filebrowser homeassistant`.
+To stop the new services, use Compose `stop samba filebrowser homeassistant codex-home`.
 Do not use `down -v` or delete state. To migrate, copy the footage, private
 application state and secret files, keep UID/GID 1000 consistent, and restore
 the same paths before starting the versioned Compose services.

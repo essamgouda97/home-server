@@ -1,13 +1,22 @@
 # Home Assistant and a house without microphones everywhere
 
+The owner subsequently confirmed existing Raspberry Pi/Arduino hardware and a
+preference for DIY. See [DIY gateway and sensor direction](diy-smart-home.md)
+before purchasing: the Pi 4 can host Zigbee2MQTT with a supported radio.
+
 Home Assistant Container is defined in the main Compose file. Open
 `http://assistant.lan` (fallback `http://10.0.0.182:8123`), including through
-Tailscale. The initial owner is `egouda`; its generated password is saved in the
+Tailscale. The owner is `egouda`; the user-chosen home-services password is saved in the
 Mac login Keychain under `assistant.lan`. Set the Home zone location privately
 under Settings → Areas, labels & zones → Zones before enabling home/away rules.
 Install the Home Assistant companion app on the phone and use
 the same address. Precise coordinates, users, access tokens and device pairing
 state belong in `/mnt/server/homeassistant`, not this public repository.
+
+[Codex is now the default Assist conversation agent](codex-home.md), using the
+existing ChatGPT subscription login. Open Assist and use text input; a virtual
+demo switch is available for testing. Speech engines and Grok voice are not
+configured. The hardware and voice sections below describe future additions.
 
 ## What is configuration as code
 

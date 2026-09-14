@@ -50,6 +50,7 @@ services:
     container_name: filebrowser
     restart: unless-stopped
     user: "1000:1000"
+    read_only: true
     entrypoint: ["/bin/filebrowser"]
     command: ["--config", "/config/settings.json"]
     ports:
@@ -57,7 +58,37 @@ services:
     volumes:
       - type: bind
         source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}
-        target: /srv
+        target: /srv/Creative
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SERVER_HOME:-/home/egouda}/workspace
+        target: /srv/Code
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SERVER_HOME:-/home/egouda}/repos
+        target: /srv/Repositories
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SERVER_DATA_DIR:-/mnt/server}/media
+        target: /srv/Media
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SERVER_DATA_DIR:-/mnt/server}/downloads
+        target: /srv/Downloads
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SERVER_HOME:-/home/egouda}
+        target: /srv/Home
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SERVER_STORAGE:-/mnt}
+        target: /srv/Storage
         bind:
           create_host_path: false
       - ${SERVER_DATA_DIR:-/mnt/server}/filebrowser:/database
@@ -69,6 +100,34 @@ services:
     cap_drop: [ALL]
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  codex-home:
+    build: ./containers/codex-home
+    image: home-server/codex-home:local
+    container_name: codex-home
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    ports:
+      - "127.0.0.1:18790:18790"
+    volumes:
+      - ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/codex-home-auth:/home/node/.codex
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m,mode=1777
+      - /agent:rw,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=0700
+    secrets:
+      - codex_home_token
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks:
+      - assistant
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18790/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -86,7 +145,10 @@ services:
       - ./config/homeassistant/configuration.yaml:/config/configuration.yaml:ro
       - ./config/homeassistant/packages:/config/packages:ro
       - ./config/homeassistant/blueprints:/config/blueprints/automation/home-server:ro
+      - ./config/homeassistant/custom_components/codex_home:/config/custom_components/codex_home:ro
       - /etc/localtime:/etc/localtime:ro
+    secrets:
+      - codex_home_token
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -453,10 +515,14 @@ services:
       - proxy
 
 secrets:
+  codex_home_token:
+    file: ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/codex_home_token
   creative_password:
     file: ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/creative_password
 
 networks:
+  assistant:
+    driver: bridge
   creative:
     driver: bridge
   proxy:

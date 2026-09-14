@@ -131,6 +131,8 @@ def main():
             report(percent < 95, f"disk {mount}", f"{percent:.0f}% used")
         result = subprocess.run(["codex", "login", "status"], capture_output=True, text=True)
         report(result.returncode == 0, "Codex login", (result.stdout + result.stderr).strip())
+        result = subprocess.run(["docker", "exec", "codex-home", "codex", "login", "status"], capture_output=True, text=True)
+        report(result.returncode == 0, "Codex Assist login", (result.stdout + result.stderr).strip())
     print(f"\n{failures} failing checks. HTTP 401 means authentication is required; endpoint checks do not verify playback or downloads.")
     return 1 if failures else 0
 

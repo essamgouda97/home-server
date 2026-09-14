@@ -1,0 +1,5 @@
+# Virtual switch for end-to-end Assist checks; controls no physical equipment.
+input_boolean:
+  codex_demo:
+    name: Codex demo switch
+    icon: mdi:robot

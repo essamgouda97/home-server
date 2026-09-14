@@ -12,6 +12,7 @@ homeassistant:
 # ESPresense receivers use MQTT; a future Bluetooth proxy can be enabled in UI.
 assist_pipeline:
 conversation:
+codex_home:
 dhcp:
 energy:
 file:
