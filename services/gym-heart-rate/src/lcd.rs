@@ -19,22 +19,27 @@ impl Lcd {
                 .map(|p| gpio.get(*p).map(|p| p.into_output_low()))
                 .collect::<Result<_, _>>()?,
         };
+        lcd.reset();
+        Ok(lcd)
+    }
+    pub fn reset(&mut self) {
+        self.rs.set_low();
+        self.enable.set_low();
         thread::sleep(Duration::from_millis(50));
         // Explicit initialization also recovers an LCD left in 4-bit mode after a process restart.
         for delay_ms in [5, 1, 1] {
-            lcd.nibble(3);
+            self.nibble(3);
             thread::sleep(Duration::from_millis(delay_ms));
         }
-        lcd.nibble(2);
+        self.nibble(2);
         thread::sleep(Duration::from_micros(50));
-        lcd.byte(false, 0x28); // 4 bit, two rows, 5x8 font
-        lcd.byte(false, 0x08); // display off during initialization
-        lcd.byte(false, 0x01);
+        self.byte(false, 0x28); // 4 bit, two rows, 5x8 font
+        self.byte(false, 0x08); // display off during initialization
+        self.byte(false, 0x01);
         thread::sleep(Duration::from_millis(2));
-        lcd.byte(false, 0x06); // increment cursor
-        lcd.byte(false, 0x0c); // display on, cursor and blink off
-        lcd.line(0, "Heart rate      ");
-        Ok(lcd)
+        self.byte(false, 0x06); // increment cursor
+        self.byte(false, 0x0c); // display on, cursor and blink off
+        self.line(0, "Heart rate      ");
     }
     fn nibble(&mut self, value: u8) {
         self.enable.set_low();

@@ -1,3 +1,4 @@
+mod connection;
 mod lcd;
 
 use anyhow::{ensure, Context, Result};
@@ -77,6 +78,7 @@ struct Model {
     snapshot: Snapshot,
     last_seen: Option<Instant>,
     stopping: bool,
+    reset_lcd: bool,
 }
 type Shared = Arc<(Mutex<Model>, Condvar)>;
 fn now_ms() -> u64 {
@@ -218,28 +220,18 @@ async fn session(
             peripheral.subscribe(&characteristic),
         )
         .await??;
-        let mut awaiting_first = true;
         loop {
-            let notification = timeout(
-                // First-time Fitbit approval happens on the phone. Give that
-                // interaction time without displaying any unconfirmed number.
-                Duration::from_millis(if awaiting_first {
-                    90000
-                } else {
-                    config.stale_after_ms
-                }),
-                notifications.next(),
-            )
-            .await
-            .context("Heart-rate notifications stopped")?
-            .context("Bluetooth disconnected")?;
+            let notification = connection::next_connected(&mut notifications, || async {
+                Ok(peripheral.is_connected().await?)
+            })
+            .await?;
             if notification.uuid != MEASUREMENT {
                 continue;
             }
             // A malformed packet never refreshes the displayed reading or its timestamp.
-            let measurement = parse_measurement(&notification.value)?;
-            accept_sample(shared, measurement);
-            awaiting_first = false;
+            if let Ok(measurement) = parse_measurement(&notification.value) {
+                accept_sample(shared, measurement);
+            }
         }
         #[allow(unreachable_code)]
         Ok::<(), anyhow::Error>(())
@@ -305,6 +297,7 @@ async fn main() -> Result<()> {
             snapshot,
             last_seen: None,
             stopping: false,
+            reset_lcd: false,
         }),
         Condvar::new(),
     ));
@@ -316,7 +309,7 @@ async fn main() -> Result<()> {
         Some(thread::spawn(move || {
             let mut previous = String::new();
             loop {
-                let model = state.0.lock().unwrap();
+                let mut model = state.0.lock().unwrap();
                 if model.stopping {
                     break;
                 }
@@ -327,7 +320,13 @@ async fn main() -> Result<()> {
                 let line = lcd_line(bpm);
                 let observation = model.snapshot.observed_at_ms;
                 let status = model.snapshot.status.clone();
+                let reset = std::mem::take(&mut model.reset_lcd);
                 drop(model);
+                if reset {
+                    lcd.reset();
+                    previous.clear();
+                    eprintln!("LCD reinitialized; Bluetooth session preserved");
+                }
                 if line != previous {
                     lcd.line(1, &line);
                     previous = line;
@@ -342,6 +341,7 @@ async fn main() -> Result<()> {
                         .1
                         .wait_timeout_while(model, Duration::from_millis(100), |model| {
                             !model.stopping
+                                && !model.reset_lcd
                                 && model.snapshot.observed_at_ms == observation
                                 && model.snapshot.status == status
                         })
@@ -355,9 +355,19 @@ async fn main() -> Result<()> {
     persist(&shared, &config.state_path)?;
     let writer_state = shared.clone();
     let path = config.state_path.clone();
+    let stale = Duration::from_millis(config.stale_after_ms);
     let writer = tokio::spawn(async move {
         loop {
             sleep(Duration::from_secs(1)).await;
+            {
+                let mut model = writer_state.0.lock().unwrap();
+                if model.snapshot.status == "live"
+                    && model.last_seen.is_none_or(|seen| seen.elapsed() >= stale)
+                {
+                    model.snapshot.status = "connecting".into();
+                    writer_state.1.notify_all();
+                }
+            }
             if let Err(error) = persist(&writer_state, &path) {
                 eprintln!("Snapshot write failed: {error}");
             }
@@ -378,7 +388,18 @@ async fn main() -> Result<()> {
         }
     });
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
-    tokio::select! { _ = tokio::signal::ctrl_c() => {}, _ = terminate.recv() => {} }
+    let mut reset_lcd =
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::user_defined1())?;
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => break,
+            _ = terminate.recv() => break,
+            _ = reset_lcd.recv() => {
+                shared.0.lock().unwrap().reset_lcd = true;
+                shared.1.notify_all();
+            }
+        }
+    }
     receiver.abort();
     if let Some(peripheral) = current.lock().await.take() {
         let _ = timeout(Duration::from_secs(3), peripheral.disconnect()).await;

@@ -165,18 +165,34 @@ settings and does not need a Google OAuth token for live Bluetooth capture.
 gym-pi?” again after disconnecting/restarting the receiver. A BlueZ pairing attempt
 did not create a saved bond. Do not assume unattended reconnection: approve the
 Pi under Google Health → Connections → Fitbit Air → Share heart rate when asked.
-The receiver allows 90 seconds for the first approved notification and displays
-no number while waiting. Once readings arrive, the normal 12-second deadline
-applies. Normal discovery follows fresh advertisements because Fitbit rotates
+The receiver preserves an intact Bluetooth connection while waiting for approval
+or new readings. It checks connection health during silence instead of disconnecting
+after a notification timeout. The 12-second deadline only hides stale readings on
+the LCD/dashboard; it does not trigger a fresh sharing request. Genuine link loss,
+power cycles and service restarts can still require Google Health approval. Google's
+published Fitbit Air instructions do not document a permanent approval setting.
+Normal discovery follows fresh advertisements because Fitbit rotates
 its Bluetooth address; it does not select an expired address from BlueZ's cache.
 Leave `device_address` unset for this tracker unless deliberately commissioning
 a stable identity in a multiple-tracker environment.
 
-Software commissioning passed six Rust packet/formatting tests, five relay tests,
+Software commissioning passed ten Rust packet/formatting/connection tests, five relay tests,
 and the live check below against the actual Life Dashboard API after phone
-approval. Both infrastructure health checks passed. The LCD GPIO mode remains
-`off` until the owner completes the physical wiring; its actual text/contrast
-and operation after a full Pi power cycle remain to be checked.
+approval. Both infrastructure health checks passed. Following physical wiring,
+the Pi's private configuration was changed to `lcd1602` and automatic service startup
+after a power cycle was observed. The owner measured expected supply/logic voltages
+at the LCD pads. Contrast adjustment made text visible, but garbled characters
+remain under investigation; readable physical output is not yet confirmed.
+
+To reinitialize a garbled LCD without restarting Bluetooth capture:
+
+```sh
+sudo systemctl kill --kill-whom=main --signal=USR1 gym-heart-rate.service
+```
+
+The display thread resets the HD44780 interface and redraws both rows while the
+existing Bluetooth session continues. This cannot repair loose connections, swapped
+data wires, or unsuitable signal levels. Keep power disconnected while rewiring.
 
 ```sh
 # From the Mac; requires the Fitbit nearby and heart-rate sharing approved:
@@ -193,7 +209,7 @@ Check a module explicitly marked 3.3 V before using the 5 V supply.
 |---|---|---|
 | 1 | VSS | Ground, physical 6 |
 | 2 | VDD | 5 V, physical 2 |
-| 3 | V0 | Ground initially, or contrast potentiometer wiper |
+| 3 | V0 | Contrast potentiometer wiper |
 | 4 | RS | Physical 11, BCM17 |
 | 5 | RW | Ground permanently |
 | 6 | E | Physical 13, BCM27 |
@@ -205,9 +221,14 @@ Check a module explicitly marked 3.3 V before using the 5 V supply.
 | 15 | A | 5 V through 330 ohms; 1 kilohm works with dimmer light |
 | 16 | K | Ground |
 
-A breadboard ground rail can connect VSS, RW, V0 and K to Pi ground. For adjustable
+A breadboard ground rail connects VSS, RW and K to Pi ground. For adjustable
 contrast, use a 10-kilohm potentiometer with its outer legs at 5 V and ground and
-its wiper connected to V0 instead of grounding V0 directly. The extra backlight
+its wiper connected to V0. Remove any direct V0-to-ground connection. Grounding V0
+gave excessive contrast on this module; adjust until the background cells fade
+and characters remain legible. A fixed starting point using the available resistors
+is `5V -> 1k -> 1k -> V0 -> 220 ohms -> GND`, approximately 0.50 V at V0.
+This divider replaces the potentiometer and may need tuning for the module.
+The extra backlight
 resistor also limits current when the module has no onboard limiting resistor.
 
 Pi GPIO outputs remain 3.3 V. A standard HD44780 accepts that logic level at a
