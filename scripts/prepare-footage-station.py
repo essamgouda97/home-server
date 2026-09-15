@@ -3,7 +3,7 @@
 
 Requires an explicit stable USB by-id path and exact capacity. The official raw
 image hash is checked before any card changes and against card read-back. Existing
-non-ISO filesystem contents are archived before formatting. Archives and rendered
+non-ISO filesystem contents are archived unless --skip-backup is explicit. Archives and rendered
 SSH provisioning live outside the public repository. Never accepts a system disk.
 """
 import argparse
@@ -233,7 +233,12 @@ def prepare_card(args):
         for mount in node.get('mountpoints', []) or []:
             if mount:
                 run('umount', mount)
-    backup_existing(real, disk, backup)
+    if args.skip_backup:
+        backup.mkdir(mode=0o700, parents=True, exist_ok=False)
+        (backup / 'device-before.json').write_text(json.dumps(disk, indent=2) + '\n')
+        print('Backup explicitly skipped; replacing the selected card.', flush=True)
+    else:
+        backup_existing(real, disk, backup)
     current, disk = inspect(args.device, args.expected_size)
     if current != real or current.stat().st_rdev != identity:
         raise ValueError('Device identity changed after backup')
@@ -277,7 +282,7 @@ def prepare_card(args):
     report = {'prepared_at': stamp, 'device': str(args.device), 'capacity': args.expected_size,
         'image': settings, 'image_readback_verified': True,
         'boot_config_sha256': {k: hashlib.sha256(v.encode()).hexdigest() for k,v in seeds.items()},
-        'hardware_boot_verified': False}
+        'hardware_boot_verified': False, 'backup_skipped': args.skip_backup}
     (backup / 'prepared.json').write_text(json.dumps(report, indent=2) + '\n')
     os.sync()
     print('PREPARED: image and boot config verified; all card filesystems unmounted.', flush=True)
@@ -295,6 +300,8 @@ def main():
                         help='Private mode-0600 SHA-512 crypt hash; SSH stays key-only')
     parser.add_argument('--backup-root', type=Path, required=True)
     parser.add_argument('--erase', action='store_true')
+    parser.add_argument('--skip-backup', action='store_true',
+                        help='Explicitly discard existing card contents without archiving')
     args = parser.parse_args()
     prepare(args)
 

@@ -173,6 +173,11 @@ The old Ubuntu installer ISO itself is **not** archived; its identity/partition
 layout and writable installation logs are preserved. This is a file backup,
 not a bootable forensic image. Formatting is not secure erasure.
 The timestamped backup contains `archives.json` and, on success, `prepared.json`.
+When the owner explicitly wants a fresh reset without preserving card contents,
+add `--skip-backup --erase`. Device identity, image checksum and complete image
+read-back checks still apply; the report records `backup_skipped: true`.
+For the new Pi 4 card, the owner selected this option and cancelled the old
+Raspbian backup before its verification completed.
 Backups are private and root-owned; use sudo to inspect/restore them. Do not commit
 them. Test the guards with `python3 scripts/test-prepare-footage-station.py`.
 
