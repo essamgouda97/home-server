@@ -106,8 +106,9 @@ class WorkflowTests(unittest.TestCase):
             return urllib.request.urlopen(request)
         with self.assertRaises(urllib.error.HTTPError) as error:
             post('/api/policy',{'project':'oops'},'http://evil.test')
-        self.assertEqual(error.exception.code,403)
-        with self.assertRaises(urllib.error.HTTPError): post('/api/policy',{'project':'../escape'})
+        self.assertEqual(error.exception.code,403); error.exception.close()
+        with self.assertRaises(urllib.error.HTTPError) as error: post('/api/policy',{'project':'../escape'})
+        error.exception.close()
         with post('/api/assign',{'id':row['id'],'project':'<script>text</script>','session':'Sunrise'}): pass
         with urllib.request.urlopen(url+'/api/state') as response:
             data=json.load(response)
@@ -115,7 +116,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(data['imports'][0]['project'],'Inbox')
         with urllib.request.urlopen(url+'/') as response:
             self.assertIn("script-src 'self'",response.headers['Content-Security-Policy'])
-        with self.assertRaises(urllib.error.HTTPError): urllib.request.urlopen(url+'/../state.py')
+        with self.assertRaises(urllib.error.HTTPError) as error: urllib.request.urlopen(url+'/../state.py')
+        error.exception.close()
 
 
 if __name__ == '__main__': unittest.main()

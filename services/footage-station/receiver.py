@@ -90,6 +90,8 @@ class Receiver:
                 clean[key] = integer(event[key], MAX_FILE * 1000)
         clean['safe_to_remove'] = event.get('safe_to_remove') is True
         previous = self.state.read('station.json', {})
+        if clean.get('phase') in ('waiting', 'mounting'):
+            previous = {}
         self.state.write('station.json', dict(previous, **clean, seen_at=stamp()))
         key = (self.route or previous).get('id')
         if key and clean.get('phase') not in ('waiting', 'safe', 'mounting'):
