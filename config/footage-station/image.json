@@ -1,0 +1,12 @@
+{
+  "name": "Raspberry Pi OS Lite (64-bit), Debian Trixie",
+  "release_date": "2026-06-18",
+  "url": "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2026-06-19/2026-06-18-raspios-trixie-arm64-lite.img.xz",
+  "extract_size": 2977955840,
+  "extract_sha256": "e235fd24fc5f039c08daba7d3abc04aecc7313f979d16d2a3fdad29dd44c33a9",
+  "init_format": "cloudinit-rpi",
+  "source": "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json",
+  "hostname": "footage-pi",
+  "username": "egouda",
+  "timezone": "America/Edmonton"
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=Prepare footage import station base tools
+Wants=network-online.target
+After=network-online.target cloud-final.service
+ConditionPathExists=!/var/lib/footage-station/base-ready
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/footage-station-bootstrap
+Restart=on-failure
+RestartSec=60
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target
