@@ -7,6 +7,7 @@ non-ISO filesystem contents are archived before formatting. Archives and rendere
 SSH provisioning live outside the public repository. Never accepts a system disk.
 """
 import argparse
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -169,7 +170,38 @@ def backup_existing(real, disk, destination):
     print('Existing writable contents preserved:', destination, flush=True)
 
 
+@contextmanager
+def pause_automounter():
+    """Prevent desktop automounts racing raw writes; restore the prior service state."""
+    if not shutil.which('systemctl'):
+        yield
+        return
+    unit = 'udisks2.service'
+    loaded = output('systemctl', 'show', unit, '--property=LoadState', '--value').strip()
+    enabled = subprocess.run(['systemctl', 'is-enabled', unit], capture_output=True, text=True).stdout.strip()
+    if loaded == 'not-found' or enabled in ('masked', 'masked-runtime'):
+        yield
+        return
+    active = subprocess.run(['systemctl', 'is-active', '--quiet', unit]).returncode == 0
+    run('systemctl', 'mask', '--runtime', '--now', unit)
+    try:
+        yield
+    finally:
+        run('systemctl', 'unmask', '--runtime', unit)
+        if active:
+            run('systemctl', 'start', unit)
+
+
 def prepare(args):
+    if args.erase:
+        if os.geteuid() != 0:
+            raise ValueError('Writing the selected card requires sudo')
+        with pause_automounter():
+            return prepare_card(args)
+    return prepare_card(args)
+
+
+def prepare_card(args):
     settings = json.loads((CONFIG / 'image.json').read_text())
     password_hash = None
     if args.console_password_hash_file:
