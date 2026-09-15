@@ -13,6 +13,16 @@ The owner prefers open-source, self-hosted services and DIY hardware by default.
 Keep new setup reproducible in this repository. The existing subscription-backed
 Codex assistant is an explicit choice; keep speech processing local.
 
+Before deploying or changing an owner-facing service, verify its `egouda` login
+uses the existing private household password from
+`~/.config/home-server/secrets/creative_password` on the server. Align mismatches
+through supported APIs, preserve backups, and update dependent integrations.
+Test an actual login through the final HTTPS address; HTTP 200 or an API-key
+health check is insufficient. Never print the password. Preserve individual
+family accounts (such as `mgouda`) and machine API keys; those are separate.
+For qBittorrent/Sonarr/Radarr run `scripts/check-download-logins.py --local`
+before proxy deployment and without `--local` afterward.
+
 ## Agent skills
 
 ### Issue tracker

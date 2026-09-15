@@ -84,7 +84,8 @@ into Requests, and verifies login including the HTTPS route. Passwords are not
 written to command arguments, files, logs or the chat. Requests uses Jellyfin
 authentication; its friendly display name can differ from the `mgouda` login.
 New accounts have normal media access, no administrative or media-deletion
-rights, and standard request permission (owner approval required). Existing
+rights, and standard request permission. They inherit the household's optional
+auto-approval flag (enabled on 2026-09-15). Existing
 accounts are not overwritten. A private result file on the Mac records only
 account IDs and pass/fail status. A partial failure needs inspection before
 retrying; the script refuses to recreate an existing Jellyfin account.

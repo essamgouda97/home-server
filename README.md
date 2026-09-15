@@ -4,6 +4,7 @@ Life Dashboard deployment and shared documents: [setup and operations](LIFE_DASH
 
 **Household dashboard: https://home.egouda.xyz** — works on the existing home
 Wi-Fi with normal DNS settings. [HTTPS setup and recovery](docs/household-https.md).
+[Media quality, progress, phone notifications and owner logins](docs/household-media.md).
 
 A Docker Compose home server for media, private creative storage, Home Assistant,
 and project work with Codex. The historical OpenClaw/Servo agent is disabled.

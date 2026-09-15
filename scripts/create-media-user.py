@@ -56,10 +56,11 @@ def worker():
     imported=api('requests','/user/import-from-jellyfin',{'jellyfinUserIds':[uid]})
     assert len(imported)==1
     sid=imported[0]['id']
-    # Standard request permission; approval remains with the owner.
-    api('requests','/user/'+str(sid),{'username':display,'permissions':32},method='PUT')
+    # Follow the household auto-approval choice without inheriting admin/4K rights.
+    permissions=32 | (int(settings['main'].get('defaultPermissions',32)) & 128)
+    api('requests','/user/'+str(sid),{'username':display,'permissions':permissions},method='PUT')
     info=api('requests','/user/'+str(sid))
-    assert info['jellyfinUserId'].replace('-','')==uid.replace('-','') and info['permissions']==32
+    assert info['jellyfinUserId'].replace('-','')==uid.replace('-','') and info['permissions']==permissions
     # Validate the actual user login, without any administrator credential.
     jar=http.cookiejar.CookieJar()
     opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))

@@ -30,6 +30,7 @@ def write(data):
 
 def main():
     os.umask(0o077)
+    subprocess.run(['python3',str(Path(__file__).with_name('check-download-logins.py')),'--local'],check=True)
     backup = Path.home()/'.local/state/home-server-maintenance/household-https'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup.mkdir(parents=True)
     original = TARGET.read_bytes() if TARGET.exists() else b''
