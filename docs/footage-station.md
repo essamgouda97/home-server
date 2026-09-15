@@ -25,6 +25,16 @@ Pi import UI or automatic camera import yet. No camera card is mounted, erased
 or imported by first boot. The goal remains active until the Pi importer has
 been commissioned and exercised on the real hardware.
 
+Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
+full-image SHA-256 read-back and persisted boot-configuration verification.
+The writable Ubuntu installer data was archived and compared successfully under
+`~/.local/state/home-server-maintenance/footage-station/20260915T035100Z` on
+home-server. `prepared.json` records the checks; physical Pi boot is still pending.
+Five preparation regression tests and both existing server/network health checks
+passed. An initial partition-listing bug was corrected before final preparation;
+the untouched writable data was recovered and verified, and the original partition
+table is retained with that backup. Missing partition trees now fail closed.
+
 ## Hardware and first boot
 
 - Put the prepared microSD in the Pi's **built-in microSD slot**, not a USB reader.
