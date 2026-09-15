@@ -2,8 +2,8 @@
 # Bounded status only: no environment, credentials, Wi-Fi profiles or raw journals.
 set -eu
 umask 077
-install -d -m 0755 /var/lib/footage-station
-report=$(mktemp /var/lib/footage-station/network-report.XXXXXX)
+install -d -o root -g root -m 0700 /var/lib/footage-station-diagnostics
+report=$(mktemp /var/lib/footage-station-diagnostics/network-report.XXXXXX)
 trap 'rm -f "$report"' EXIT
 {
     date --iso-8601=seconds
@@ -21,4 +21,4 @@ trap 'rm -f "$report"' EXIT
         printf '\nBase packages ready\n'
     fi
 } > "$report" 2>&1
-mv "$report" /var/lib/footage-station/network-report.txt
+mv "$report" /var/lib/footage-station-diagnostics/network-report.txt

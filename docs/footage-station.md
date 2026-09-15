@@ -22,13 +22,15 @@ and local proxy playback belong on the Mac.
    previews, transcription, proxy delivery and versioned OTIO rough cuts for
    DaVinci Resolve. This is planned follow-on work, not installed by this image.
 
-**Current boundary:** ingest.lan and its Codex worker are deployed. The new Pi 4 card
-is prepared and verified with the pinned 64-bit OS, Ethernet DHCP, administrator SSH
-keys and local console recovery. Physical Pi 4 boot, stable power, camera mounting,
-unplug/retry and reboot acceptance checks remain required. The automatic Pi daemon
-and restricted receiver are implemented, but commissioning installs and enables
-the application only after hardware and power checks pass. No camera is imported
-by the base OS image alone. [Clustering and editing plan](footage-clustering.md)
+**Current boundary:** ingest.lan and its Codex worker are deployed. The Pi 4 is
+commissioned at `10.0.0.95`, which the owner reserved in the router. Ethernet,
+SSH, root expansion, base packages, stable power (`throttled=0x0`), and importer
+startup after a controlled reboot passed. The real Pi sent a synthetic 32 MiB file
+through its restricted SSH key; resuming after a 4 MiB prefix sent only 28 MiB,
+and repeating the import sent zero file bytes. Server SHA-256/manifests matched;
+synthetic media was removed. The dashboard sees the station heartbeat.
+Physical camera-card read-only mounting, removal/reinsertion and interrupted USB
+recovery still need a card connected to the Pi. [Clustering and editing plan](footage-clustering.md)
 records the later scene-oriented catalog and Resolve handoff.
 
 Pi 4 preparation completed on 2026-09-14 (Edmonton): the separate
@@ -62,7 +64,7 @@ That saved form still passed isolated Netplan generation. The missing
 observation alone establishes the cause. As a controlled recovery step,
 `config/footage-station/network.json` now uses the observed `eth0` directly.
 Persistent journals are capped at 64 MB / seven days, and a timer keeps one
-root-readable `var/lib/footage-station/network-report.txt` with addresses, carrier,
+root-readable `var/lib/footage-station-diagnostics/network-report.txt` with addresses, carrier,
 power flags and service state. No credentials or raw logs are exported.
 
 For an already-booted card, mount its root partition on the maintenance server,
@@ -86,6 +88,15 @@ the next hardware boot**, not proven by offline checks.
 The repair was applied on 2026-09-14 (Edmonton), verified after a fresh read-only
 mount, and the reader was powered off. Preparation tests and both infrastructure
 health checks passed. The Pi is ready for that hardware retest.
+
+The subsequent hardware retest succeeded: `eth0` acquired `10.0.0.95` and the Pi
+became reachable through SSH and mDNS. Its interface reported carrier and firmware
+reported no current or historical undervoltage for that boot. The bootstrap package
+job was initially inactive; starting it completed successfully. Commissioning and
+a further reboot then confirmed automatic importer recovery. This establishes
+recovery, but does not isolate whether cabling/port changes contributed. The
+diagnostic snapshot uses its own root-owned directory so it never changes the
+permissions of the importer's private SSH-key directory.
 
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
