@@ -1,0 +1,8 @@
+[Unit]
+Description=Record footage station network and power status for offline diagnosis
+After=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/footage-network-report
+TimeoutStartSec=20

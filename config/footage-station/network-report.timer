@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep a bounded footage station diagnostic snapshot
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+Unit=footage-network-report.service
+
+[Install]
+WantedBy=timers.target

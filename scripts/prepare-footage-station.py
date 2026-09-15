@@ -97,6 +97,13 @@ def seed(settings, public_keys, console_password_hash=None):
         {'path': '/etc/ssh/sshd_config.d/00-footage-station.conf', 'permissions': '0644',
          'content': 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n'},
     ]
+    for source, target, mode in [
+        ('journald.conf', '/etc/systemd/journald.conf.d/footage.conf', '0644'),
+        ('network-report.sh', '/usr/local/sbin/footage-network-report', '0755'),
+        ('network-report.service', '/etc/systemd/system/footage-network-report.service', '0644'),
+        ('network-report.timer', '/etc/systemd/system/footage-network-report.timer', '0644'),
+    ]:
+        files.append({'path': target, 'permissions': mode, 'content': (CONFIG / source).read_text()})
     user = {'hostname': settings['hostname'], 'manage_etc_hosts': True,
         'timezone': settings['timezone'], 'locale': 'en_CA.UTF-8',
         'users': [{'name': settings['username'], 'groups': ['adm', 'sudo', 'plugdev'],
@@ -107,6 +114,8 @@ def seed(settings, public_keys, console_password_hash=None):
         'package_update': False, 'package_upgrade': False, 'write_files': files,
         'runcmd': [['systemctl', 'enable', '--now', 'ssh'],
             ['systemctl', 'daemon-reload'],
+            ['systemctl', 'restart', 'systemd-journald'],
+            ['systemctl', 'enable', '--now', 'avahi-daemon', 'footage-network-report.timer'],
             ['systemctl', 'enable', 'footage-station-bootstrap.service'],
             ['systemctl', 'start', '--no-block', 'footage-station-bootstrap.service']],
         'final_message': 'Footage station SSH ready; base package setup continues in systemd.'}
@@ -117,9 +126,7 @@ def seed(settings, public_keys, console_password_hash=None):
         user['users'][0]['lock_passwd'] = False
         # Unlocking console access does not enable SSH password authentication.
     # JSON is a strict subset of YAML; no third-party YAML serializer is needed.
-    network = {'network': {'version': 2, 'renderer': 'NetworkManager',
-        'ethernets': {'wired': {'match': {'name': 'e*'}, 'dhcp4': True,
-            'dhcp6': True, 'optional': True}}}}
+    network = json.loads((CONFIG / 'network.json').read_text())
     return {'user-data': '#cloud-config\n' + json.dumps(user, indent=2) + '\n',
         'network-config': json.dumps(network, indent=2) + '\n',
         'meta-data': json.dumps({'instance-id': 'footage-pi-' + uuid.uuid4().hex,

@@ -44,6 +44,46 @@ passed with all 29 containers running and Codex authenticated. The ingest UI's
 authentication, tracking API, worker heartbeat and cross-origin protections passed.
 Physical Pi 4 first boot and importer commissioning are still pending.
 
+### Pi 4 offline network diagnosis
+
+On its first attempted boot, the Pi 4 did not become reachable by mDNS or LAN
+SSH. Offline inspection confirmed hostname provisioning, root partition expansion
+to about 63.5 GB and enabled SSH. Cloud-init completed without fatal errors; its
+early network table showed `eth0` down without an IP, MAC `dc:a6:32:95:5c:e4`.
+The generated `netplan-wired` profile had no successful activation timestamp.
+There was no persistent system journal, so these observations do **not** prove
+whether physical carrier, DHCP or profile activation caused the failure.
+The owner used the same cable and router port for the Pi 3 and Pi 4; testing a
+different cable/port is part of the next boot check.
+
+NetworkManager rewrote the wildcard profile into a Netplan passthrough form.
+That saved form still passed isolated Netplan generation. The missing
+`cc_netplan_nm_patch` warning is also reported in the upstream image; neither
+observation alone establishes the cause. As a controlled recovery step,
+`config/footage-station/network.json` now uses the observed `eth0` directly.
+Persistent journals are capped at 64 MB / seven days, and a timer keeps one
+root-readable `var/lib/footage-station/network-report.txt` with addresses, carrier,
+power flags and service state. No credentials or raw logs are exported.
+
+For an already-booted card, mount its root partition on the maintenance server,
+verify the selected USB device and use:
+
+```sh
+sudo python3 scripts/repair-footage-network.py \
+  --root /media/egouda/rootfs \
+  --device /dev/disk/by-id/usb-Generic_STORAGE_DEVICE-0:0 \
+  --expected-size 64088965120 --apply
+```
+
+The root mount must be read-write for `--apply`; without it the script validates
+only. It checks that the mounted root belongs to the selected removable card,
+checks actual Netplan rendering in a temporary directory, replaces only recognized
+station Ethernet profiles, retains their small private configuration snapshots,
+and enables SSH, Avahi and diagnostic collection. Cloud-init networking is disabled
+on this already-provisioned card so Netplan owns subsequent network configuration.
+Unmount and safely eject the card afterward. Real Ethernet recovery is **pending
+the next hardware boot**, not proven by offline checks.
+
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
 The writable Ubuntu installer data was archived and compared successfully under

@@ -52,7 +52,8 @@ class PreparationTests(unittest.TestCase):
         self.assertTrue(user['disable_root'])
         self.assertNotIn('plain_text_passwd', user['users'][0])
         network = json.loads(seeds['network-config'])['network']
-        self.assertTrue(network['ethernets']['wired']['dhcp4'])
+        self.assertTrue(network['ethernets']['eth0']['dhcp4'])
+        self.assertNotIn('match', network['ethernets']['eth0'])
         self.assertNotIn('wifis', network)
         self.assertNotIn('packages', user)  # SSH onboarding does not wait on apt.
         self.assertIn('--no-block', user['runcmd'][-1])
