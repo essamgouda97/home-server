@@ -23,6 +23,20 @@ class CardSelectionTests(unittest.TestCase):
         self.boot['children'][0]['mountpoints'] = [None]
         self.assertEqual(len(candidates([self.boot, self.card], '179:2')), 1)
 
+    def test_pocket_internal_storage_requires_observed_usb_identity(self):
+        self.card.update(rm=False, model='IBLOCK')
+        identities = {'8:0': ('2ca3', '0020', 'OsmoPocket4-test')}
+        self.assertEqual(len(candidates([self.boot, self.card], '179:2', identities)), 1)
+        for identity in [None, ('1234', '0020', 'OsmoPocket4-test'),
+                         ('2ca3', '9999', 'OsmoPocket4-test'), ('2ca3', '0020', 'Other')]:
+            with self.subTest(identity=identity):
+                self.assertEqual(candidates([self.boot, self.card], '179:2', {'8:0': identity}), [])
+        # Even an allowlisted camera identity cannot override the boot-disk exclusion.
+        self.boot.update(tran='usb', rm=False)
+        self.boot['children'][0]['mountpoints'] = [None]
+        identities['179:0'] = identities['8:0']
+        self.assertEqual(len(candidates([self.boot, self.card], '179:2', identities)), 1)
+
     def test_unknown_root_fails_closed(self):
         with self.assertRaisesRegex(ValueError, 'operating-system disk'):
             candidates([self.boot, self.card], '0:45')

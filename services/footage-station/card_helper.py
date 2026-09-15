@@ -24,15 +24,36 @@ def descendants(node):
         yield from descendants(child)
 
 
-def candidates(tree, root_device):
+def usb_identity(device):
+    """Read the actual USB ancestor, not the generic SCSI model or volume label."""
+    if not isinstance(device, str) or not re.fullmatch(r'\d+:\d+', device):
+        return None
+    try:
+        path = (Path('/sys/dev/block') / device).resolve(strict=True)
+        for ancestor in (path, *path.parents):
+            if (ancestor / 'idVendor').is_file():
+                return tuple((ancestor / name).read_text().strip()
+                             for name in ('idVendor', 'idProduct', 'product'))
+    except OSError:
+        pass  # Disconnection or unavailable identity must fail closed.
+    return None
+
+
+def candidates(tree, root_device, usb_devices=None):
     if not any(n.get('maj:min') == root_device for disk in tree for n in descendants(disk)):
         raise ValueError('Cannot identify the operating-system disk; no camera cards offered.')
     results = []
     for disk in tree:
         if any(n.get('maj:min') == root_device for n in descendants(disk)):
             continue
-        if disk.get('type') != 'disk' or disk.get('tran') != 'usb' or not disk.get('rm'):
+        if disk.get('type') != 'disk' or disk.get('tran') != 'usb':
             continue
+        if not disk.get('rm'):
+            identity = (usb_devices or {}).get(disk.get('maj:min'))
+            # Pocket 4 internal storage advertises RM=0, model IBLOCK. Never
+            # broaden this exception to arbitrary USB SSDs or other host disks.
+            if not identity or identity[:2] != ('2ca3', '0020') or not identity[2].startswith('OsmoPocket4-'):
+                continue
         for part in disk.get('children', []):
             uuid = part.get('uuid')
             if part.get('type') != 'part' or part.get('children') or part.get('fstype') not in ('vfat', 'exfat'):
@@ -55,7 +76,9 @@ def candidates(tree, root_device):
 def list_cards():
     tree = json.loads(output('lsblk', '--tree', '-b', '-J', '-o',
         'NAME,PATH,MAJ:MIN,SIZE,MODEL,TRAN,RM,TYPE,FSTYPE,UUID,LABEL,MOUNTPOINTS'))['blockdevices']
-    return candidates(tree, output('findmnt', '-n', '-o', 'MAJ:MIN', '--target', '/'))
+    identities = {disk.get('maj:min'): usb_identity(disk.get('maj:min')) for disk in tree
+                  if disk.get('tran') == 'usb' and not disk.get('rm')}
+    return candidates(tree, output('findmnt', '-n', '-o', 'MAJ:MIN', '--target', '/'), identities)
 
 
 def mounted(target):

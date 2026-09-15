@@ -125,6 +125,29 @@ mount/reboot testing.
 
 ## Hardware and first boot
 
+### Pocket 4 internal storage over USB
+
+Power on the camera, connect a data cable to a Pi USB-A port, and select the
+camera's USB file-transfer mode. If no prompt appears, use the camera's settings
+USB mode and reconnect. The Pi's USB-C connector remains connected to its power
+supply. The automatic importer uses the camera's `DCIM` folder just like a card;
+it mounts exFAT read-only, verifies originals and reports safe removal in ingest.lan.
+
+Hardware inspection on 2026-09-15 found DJI USB ID `2ca3:0020`, USB product prefix
+`OsmoPocket4-`, and internal storage presented as a **non-removable** USB `IBLOCK`
+disk. The original removable-only filter therefore ignored it. The root mount
+helper now accepts this specific observed USB identity as an exception, looking
+it up from sysfs rather than trusting a volume label or SCSI model. Unknown fixed
+USB disks remain excluded, as does the entire operating-system disk even if it
+has an allowlisted identity. The empty camera SD slot is ignored.
+
+The real camera's `Pocket4` exFAT partition mounted with `ro,nosuid,nodev,noexec`;
+its DCIM contained 54 files totaling 36,988,226,389 bytes when ingestion began.
+The USB connection negotiated USB 2.0 speed during this test, despite using a blue
+Pi port. Cable/device negotiation limits this connection's speed. Import completion
+and safe unmount must be observed in the dashboard before unplugging the camera.
+All 22 transfer, workflow and device-selection tests passed before deployment.
+
 - Put the prepared microSD in the Pi's **built-in microSD slot**, not a USB reader.
 - Connect Ethernet to the same router/network as home-server.
 - Connect a reliable Pi 4 USB-C supply rated for 5 V / 3 A (the official supply
