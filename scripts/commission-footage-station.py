@@ -3,12 +3,23 @@
 import argparse
 import json
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import tarfile
 import tempfile
 
 REPO = Path(__file__).resolve().parents[1]
+
+
+def require_stable_power(response):
+    text = response.decode().strip()
+    if not re.fullmatch(r'throttled=0x[0-9a-fA-F]{1,8}', text):
+        raise ValueError('Could not verify Pi power status; no importer installed.')
+    flags = int(text.split('=', 1)[1], 16)
+    # Firmware bits 0 and 16 mean current and earlier undervoltage respectively.
+    if flags & ((1 << 0) | (1 << 16)):
+        raise ValueError('Pi reports undervoltage during this boot. Correct its power supply/cable and reboot before commissioning.')
 
 
 def run(host, command, data=None):
@@ -26,6 +37,7 @@ def main():
     model = run(args.pi, 'cat /proc/device-tree/model').decode().rstrip('\x00\n')
     if not model.startswith(expected + ' Rev '):
         raise SystemExit('Target is not the expected ' + expected + '; no changes made.')
+    require_stable_power(run(args.pi, 'sudo -n vcgencmd get_throttled'))
     run(args.pi, 'test -e /var/lib/footage-station/base-ready && sudo -n true')
     settings = dict(line.split('=',1) for line in (REPO/'server.conf').read_text().splitlines()
                     if line and not line.startswith('#') and '=' in line)

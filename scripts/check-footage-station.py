@@ -21,6 +21,9 @@ printf '\\nHardware: '
 tr -d '\\000' < /proc/device-tree/model
 printf '\\n'
 ip -br address
+sudo -n vcgencmd get_throttled
+sudo -n vcgencmd measure_temp
+sudo -n passwd -S egouda
 cloud-init status --long || true
 systemctl is-active ssh
 systemctl status footage-station-bootstrap --no-pager || true

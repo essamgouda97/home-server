@@ -1,7 +1,9 @@
 # Raspberry Pi footage import station
 
-The owner selected a Raspberry Pi **3 Model B**, an approximately 64 GB boot
-microSD card and Ethernet for first boot. The Pi reads camera cards and transfers
+The current target is a Raspberry Pi **4 Model B**, a separate 64 GB boot
+microSD card (64,088,965,120 bytes) and Ethernet. The owner switched from the
+3 Model B after it booted to `footage-pi` but showed repeated low-voltage warnings
+and never became reachable over the network. The 3 B is set aside for now. The Pi reads camera cards and transfers
 originals to the existing server. Thumbnail generation, transcription, proxies,
 classification and Codex edit preparation belong on the server; Resolve finishing
 and local proxy playback belong on the Mac.
@@ -20,20 +22,22 @@ and local proxy playback belong on the Mac.
    previews, transcription, proxy delivery and versioned OTIO rough cuts for
    DaVinci Resolve. This is planned follow-on work, not installed by this image.
 
-**Current boundary:** the boot card is provisioned and the owner has connected
-it to Pi power and Ethernet. The server console is live at ingest.lan. The automatic
-Pi daemon, restricted transfer receiver, server console and Codex metadata review
-queue are implemented in this repository. Physical Pi boot, read-only camera
-mounting, unplug/retry and reboot acceptance checks are still required. No camera
-card is mounted or imported by the base OS image alone; commissioning installs
-and enables the application. [Clustering and editing plan](footage-clustering.md)
-records the later scene-oriented, cross-camera catalog and Resolve handoff.
+**Current boundary:** ingest.lan and its Codex worker are deployed. A new Pi 4 card
+is being prepared with the same pinned 64-bit OS, Ethernet DHCP, administrator SSH
+keys and local console recovery. Physical Pi 4 boot, stable power, camera mounting,
+unplug/retry and reboot acceptance checks remain required. The automatic Pi daemon
+and restricted receiver are implemented, but commissioning installs and enables
+the application only after hardware and power checks pass. No camera is imported
+by the base OS image alone. [Clustering and editing plan](footage-clustering.md)
+records the later scene-oriented catalog and Resolve handoff.
 
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
 The writable Ubuntu installer data was archived and compared successfully under
 `~/.local/state/home-server-maintenance/footage-station/20260915T035100Z` on
-home-server. `prepared.json` records the checks; physical Pi boot is still pending.
+home-server. `prepared.json` records those original-card checks. The owner later observed
+a `footage-pi` console login and low-voltage warnings on the 3 B; its network
+setup was not remotely verifiable. This old card is not the new Pi 4 card.
 Five preparation regression tests and both existing server/network health checks
 passed. An initial partition-listing bug was corrected before final preparation;
 the untouched writable data was recovered and verified, and the original partition
@@ -56,15 +60,18 @@ mount/reboot testing.
 
 - Put the prepared microSD in the Pi's **built-in microSD slot**, not a USB reader.
 - Connect Ethernet to the same router/network as home-server.
-- Connect a suitable Pi 3 micro-USB power supply. No screen or keyboard is required.
+- Connect a reliable Pi 4 USB-C supply rated for 5 V / 3 A (the official supply
+  outputs 5.1 V / 3 A). Avoid the supply/cable that caused the 3 B voltage warnings.
+  A monitor is optional; Pi 4 video uses micro-HDMI.
 - Allow several minutes for first boot and package installation. Keep power on.
 - The hostname is `footage-pi`; try `ssh egouda@footage-pi.local` from the Mac.
   If mDNS is unavailable, find `footage-pi` in the router DHCP clients and use its IP.
 - After boot, the USB reader can be attached to the Pi for **separate camera
   cards**. The prepared 64 GB card remains its operating-system disk.
 
-The 3 B is a modest ingestion device; do not promise fast bulk transfers or
-video transcoding. The next stage will measure its actual transfer speed.
+The Pi 4 remains an ingestion device; processing stays on the server. Use a blue
+USB 3 port for a capable camera reader. Measure real card/reader/network throughput
+after commissioning instead of promising a transfer rate from interface specs.
 An unplugged/disconnected import must remain pending rather than being reported
 as complete. This station is an import endpoint, not an independent footage backup.
 
@@ -76,9 +83,28 @@ python3 scripts/check-footage-station.py egouda@10.0.0.123
 
 These checks accept a new SSH host key on first contact, retain it in known_hosts,
 and refuse changed keys. Inspect any unexpected hostname/hardware before continuing.
-The Mac and server public keys are provisioned; private keys and server credentials
-are never copied onto the boot card. SSH password/root login are disabled. The
-owner's SSH account has passwordless sudo for subsequent device administration.
+The Mac and server public keys are provisioned. Private SSH keys and Codex tokens
+are never copied onto the boot card. SSH password/root login remain disabled.
+For the Pi 4, `egouda` also has a **local console password**, matching the existing
+home-services password. Only a SHA-512 crypt hash is placed in private boot
+provisioning; neither the plaintext nor its hash is committed. The administrator
+account has passwordless sudo. Future password rotation uses `sudo passwd egouda`
+on the Pi; changing the server password does not automatically rotate the Pi's.
+
+If networking fails, sign in on the HDMI console and run:
+
+```sh
+ip -br address
+nmcli device status
+sudo vcgencmd get_throttled
+cloud-init status --long
+sudo systemctl status NetworkManager ssh --no-pager
+```
+
+Share the address/status summary, not credential files or full cloud-init user data.
+Commissioning rejects current or recorded undervoltage (firmware bits 0/16).
+After correcting the supply/cable, reboot and repeat the power check. Other flags
+remain visible for diagnosis and are not falsely labelled undervoltage.
 
 Cloud-init establishes access without waiting for package downloads. A separate
 systemd unit installs Python, rsync, exFAT tools and Avahi and retries failures.
@@ -99,7 +125,8 @@ reflash a working station to apply ordinary application changes.
 The pinned source, expanded image size and SHA-256 live in
 `config/footage-station/image.json`. It is Raspberry Pi OS Lite 64-bit, Debian
 Trixie, release 2026-06-18, with `cloudinit-rpi` first-boot customization.
-The upstream manifest explicitly includes the Pi 3 64-bit family.
+The upstream image supports both the Pi 3 and Pi 4 families.
+`target_model` records the selected board; commissioning rejects a different model.
 
 Download the `.img.xz` URL in that file to a private cache outside Git. Fetch its
 `.sha256` companion, verify with `sha256sum -c`, and decompress with `xz -dk`.
@@ -113,14 +140,21 @@ Copy only the Mac's **public** SSH key to the server's private staging directory
 # On home-server; substitute the actual inspected link/size and local paths.
 sudo python3 scripts/prepare-footage-station.py \
   --device /dev/disk/by-id/usb-Generic_STORAGE_DEVICE-0:0 \
-  --expected-size 63864569856 \
+  --expected-size 64088965120 \
   --image /home/egouda/.cache/home-server/pi-images/2026-06-18-raspios-trixie-arm64-lite.img \
-  --public-key /home/egouda/.cache/home-server/pi-images/mac-admin.pub \
+  --public-key /home/egouda/.cache/home-server/pi-images/mac-authorized.pub \
   --public-key /home/egouda/.ssh/id_rsa.pub \
-  --backup-root /home/egouda/.local/state/home-server-maintenance/footage-station
+  --console-password-hash-file /home/egouda/.config/home-server/secrets/footage-console-login.sha512 \
+  --backup-root /home/egouda/.local/state/home-server-maintenance/footage-station/pi4
 ```
 
 Without `--erase`, this only inspects the target and validates the public keys.
+The optional console hash file must be mode 0600 and outside Git. Provision it
+from the private password store using `openssl passwd -6 -stdin`, without putting
+the plaintext in arguments or logs. Without this option, console login stays locked.
+On systemd desktop hosts the writer temporarily masks UDisks automounting, restoring
+its prior state even if preparation fails. It does not alter mounted server storage.
+
 Add `--erase` only when deliberately repurposing the selected card. The tool:
 
 1. Requires a partitioned removable USB whole disk, matching capacity and no system
@@ -250,7 +284,7 @@ python3 scripts/commission-footage-station.py
 # If mDNS is unavailable, pass --pi egouda@<DHCP-address> to commissioning.
 ```
 
-The installer checks the Pi 3 B model and bootstrap completion marker. It installs
+The installer checks the configured Pi 4 B model, firmware power status and bootstrap completion marker. It installs
 root-owned application files and a limited mount helper, creates an unprivileged
 `footage-station` account, generates its private transfer key **on the Pi**, pins
 the server's host public key obtained through the authenticated Mac→server SSH
@@ -266,7 +300,7 @@ unmount. Keep another independent copy before reusing the camera card.
 
 Before commissioning is considered complete, verify these on actual hardware:
 
-- Model, expanded root filesystem, Ethernet, SSH and base packages.
+- Pi 4 model, stable power, expanded root filesystem, Ethernet, SSH, console login and base packages.
 - Service heartbeat on ingest.lan after installation and after a Pi reboot.
 - Boot disk excluded; supported camera DCIM mounted read-only.
 - Synthetic card import, SHA-256 match, manifest and safe ejection.
@@ -279,6 +313,8 @@ hardware checks. Run `make check-network` from the Mac after deployment.
 
 ## Source references
 
+- [Pi power and setup requirements](https://www.raspberrypi.com/documentation/computers/getting-started.html#power-supply)
+- [Firmware voltage/throttling flags](https://www.raspberrypi.com/documentation/computers/os.html#get_throttled)
 - [Official OS manifest](https://downloads.raspberrypi.com/os_list_imagingutility_v4.json)
 - [Raspberry Pi OS downloads](https://www.raspberrypi.com/software/operating-systems/)
 - [Cloud-init on Raspberry Pi OS](https://www.raspberrypi.com/news/cloud-init-on-raspberry-pi-os/)

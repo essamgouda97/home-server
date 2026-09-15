@@ -91,6 +91,30 @@ class PreparationTests(unittest.TestCase):
             prepare.inspect(device, self.disk['size'])
             self.assertIn('--tree', command.call_args.args)
 
+    def test_automount_service_restored_after_preparation_failure(self):
+        status = MagicMock(returncode=0, stdout='static\n')
+        with patch.object(prepare.shutil, 'which', return_value='/usr/bin/systemctl'), \
+             patch.object(prepare, 'output', return_value='loaded\n'), \
+             patch.object(prepare.subprocess, 'run', return_value=status), \
+             patch.object(prepare, 'run') as commands:
+            with self.assertRaisesRegex(ValueError, 'simulated write failure'):
+                with prepare.pause_automounter():
+                    raise ValueError('simulated write failure')
+            self.assertEqual([call.args for call in commands.call_args_list], [
+                ('systemctl', 'mask', '--runtime', '--now', 'udisks2.service'),
+                ('systemctl', 'unmask', '--runtime', 'udisks2.service'),
+                ('systemctl', 'start', 'udisks2.service')])
+
+    def test_preexisting_automount_mask_is_preserved(self):
+        status = MagicMock(returncode=1, stdout='masked\n')
+        with patch.object(prepare.shutil, 'which', return_value='/usr/bin/systemctl'), \
+             patch.object(prepare, 'output', return_value='masked\n'), \
+             patch.object(prepare.subprocess, 'run', return_value=status), \
+             patch.object(prepare, 'run') as commands:
+            with prepare.pause_automounter():
+                pass
+            commands.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()
