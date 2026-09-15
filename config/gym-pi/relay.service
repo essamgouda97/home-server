@@ -1,0 +1,15 @@
+[Unit]
+Description=Relay gym Pi Fitbit readings to Life Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 @@REPO@@/scripts/relay-gym-fitbit.py
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

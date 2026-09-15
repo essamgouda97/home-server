@@ -1,0 +1,7 @@
+{
+  "device_name": "Google Fitbit Air",
+  "display": "off",
+  "lcd_pins_bcm": [17, 27, 22, 23, 24, 25],
+  "stale_after_ms": 12000,
+  "state_path": "/var/lib/gym-pi/fitbit-live.json"
+}

@@ -80,10 +80,14 @@ imports, then start it again. App reads/writes use the same server database.
 ## Mac companions
 
 The server performs scheduled Google Health imports and imports relayed Fitbit
-minute history. Existing macOS Bluetooth capture/watchdog remain on the Mac.
-`install-life-mac.py` disables the two old local history-import LaunchAgents and
-installs an SSH snapshot relay plus a Resolve companion. Their plist backups are
-under `~/.local/state/life-dashboard-migration/launchagents`.
+minute history. Live Bluetooth capture now runs in Rust on `gym-pi`, with a server
+SSH relay feeding the existing dashboard state file. See [Gym Pi](docs/gym-pi.md)
+for its LCD wiring, deployment and checks. The Mac Bluetooth bridge, watchdog and
+Fitbit relay are explicitly disabled; their LaunchAgent definitions are retained.
+`install-life-mac.py` preserves that retirement when the `gym-pi-primary` marker
+exists and continues to install the Resolve companion. The two old local history
+importers also remain disabled. Earlier plist backups are under
+`~/.local/state/life-dashboard-migration/launchagents`.
 
 The Resolve companion exposes only the existing bridge commands over a mode-0600
 SSH-forwarded Unix socket. No inbound Mac SSH service or LAN listener is required.

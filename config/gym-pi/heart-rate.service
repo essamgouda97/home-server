@@ -1,0 +1,24 @@
+[Unit]
+Description=Gym Fitbit heart-rate receiver and LCD (Rust)
+Wants=bluetooth.service
+After=bluetooth.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=egouda
+SupplementaryGroups=gpio
+ExecStart=/usr/local/bin/gym-heart-rate --config /etc/gym-pi/heart-rate.json
+Restart=always
+RestartSec=5
+StateDirectory=gym-pi
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

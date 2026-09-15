@@ -1,9 +1,10 @@
 # Gym Pi: Raspberry Pi 3 Model B
 
-`gym-pi` is a separate Wi-Fi/Bluetooth node for the basement gym. Its intended
-next role is receiving live Bluetooth heart-rate measurements and sending them
-over USB serial to an Arduino driving the 5461AS display. Heart-rate receiver and
-display firmware still need commissioning; this setup prepares the OS and radios.
+`gym-pi` is a separate Wi-Fi/Bluetooth node for the basement gym. The Rust program
+in `services/gym-heart-rate` receives standard Fitbit Air heart-rate notifications
+and drives a parallel 1602A LCD directly from six Pi GPIO pins. No Arduino is
+required. A server SSH relay supplies the same live readings to Life Dashboard.
+The previously tested 5461AS seven-segment display has been superseded by the LCD.
 
 ## Card and network
 
@@ -111,7 +112,148 @@ The backup is under
 
 Six provisioning tests passed. `make check-server` passed; the Mac's
 `make check-network` passed on retry after one transient UDP DNS timeout.
-Physical Pi boot and Wi-Fi association remain pending.
+Physical Pi boot and Wi-Fi association subsequently passed: the Pi joined Wi-Fi at
+`10.0.0.242`, Bluetooth was powered on, the base bootstrap completed, no systemd
+units had failed, and `sudo vcgencmd get_throttled` returned `0x0`.
+
+## Rust heart-rate receiver
+
+The receiver uses btleplug/BlueZ for Bluetooth and RPPAL for the write-only LCD
+interface. It consumes the standard Heart Rate Measurement characteristic
+`2A37` in service `180D`. Only fields actually present in the packet are retained;
+the program does not fabricate HRV, contact status or heart-rate samples.
+
+Each notification wakes the display thread immediately. The LCD is updated only
+when its text changes, overwrites the full line to erase old digits, and is never
+cleared between readings. A monotonic 12-second freshness deadline replaces lost
+or zero readings with `--- BPM`; disconnects blank the number immediately. The
+program attempts to reconnect automatically. Fitbit controls the measurement cadence, so this
+does not claim to sample faster than the tracker.
+
+The JSON snapshot uses Life Dashboard's schema version 2 and keeps at most 90
+recent samples. An atomic mode-0600 snapshot is written once per second at
+`/var/lib/gym-pi/fitbit-live.json`. Health readings and device addresses are not
+logged or committed. The LCD updates independently of snapshot writes or Wi-Fi.
+
+To build and install on the Pi from this repository:
+
+```sh
+sh scripts/install-gym-heart-rate.sh
+```
+
+The installer uses the committed Cargo lockfile, runs tests, builds an optimized
+binary, and enables `gym-heart-rate.service`. The first build on the Pi 3B takes
+several minutes. The service runs as `egouda` with supplementary `gpio` access.
+Configuration lives at `/etc/gym-pi/heart-rate.json`; existing settings survive
+updates. `display` defaults to `off`, so installation does not drive unknown wiring.
+After wiring is complete, change it to `lcd1602` and restart the service.
+
+```sh
+sudo systemctl restart gym-heart-rate
+systemctl status gym-heart-rate --no-pager
+journalctl -u gym-heart-rate -n 20 --no-pager
+```
+
+Keep Fitbit's Share heart rate enabled in Google Health. The Pi matches the
+advertised name `Google Fitbit Air`; if multiple matching trackers are nearby, set the
+optional `device_address` in the private Pi config. It refuses ambiguous matches.
+An address can change when the tracker uses Bluetooth privacy, requiring a local
+configuration update. The Pi does not change Fitbit firmware or Google account
+settings and does not need a Google OAuth token for live Bluetooth capture.
+
+**Commissioning limitation:** Google Health requested “Share heart rate with
+gym-pi?” again after disconnecting/restarting the receiver. A BlueZ pairing attempt
+did not create a saved bond. Do not assume unattended reconnection: approve the
+Pi under Google Health → Connections → Fitbit Air → Share heart rate when asked.
+The receiver allows 90 seconds for the first approved notification and displays
+no number while waiting. Once readings arrive, the normal 12-second deadline
+applies. Normal discovery follows fresh advertisements because Fitbit rotates
+its Bluetooth address; it does not select an expired address from BlueZ's cache.
+Leave `device_address` unset for this tracker unless deliberately commissioning
+a stable identity in a multiple-tracker environment.
+
+Software commissioning passed six Rust packet/formatting tests, five relay tests,
+and the live check below against the actual Life Dashboard API after phone
+approval. Both infrastructure health checks passed. The LCD GPIO mode remains
+`off` until the owner completes the physical wiring; its actual text/contrast
+and operation after a full Pi power cycle remain to be checked.
+
+```sh
+# From the Mac; requires the Fitbit nearby and heart-rate sharing approved:
+python3 scripts/check-gym-heart-rate.py --require-live
+```
+
+## 1602A LCD wiring
+
+Power off the Pi before rewiring and disconnect the old seven-segment setup.
+This mapping is for a normal **5 V HD44780-compatible 1602A** in four-bit mode.
+Check a module explicitly marked 3.3 V before using the 5 V supply.
+
+| LCD pin | Label | Pi connection |
+|---|---|---|
+| 1 | VSS | Ground, physical 6 |
+| 2 | VDD | 5 V, physical 2 |
+| 3 | V0 | Ground initially, or contrast potentiometer wiper |
+| 4 | RS | Physical 11, BCM17 |
+| 5 | RW | Ground permanently |
+| 6 | E | Physical 13, BCM27 |
+| 7–10 | D0–D3 | Unconnected |
+| 11 | D4 | Physical 15, BCM22 |
+| 12 | D5 | Physical 16, BCM23 |
+| 13 | D6 | Physical 18, BCM24 |
+| 14 | D7 | Physical 22, BCM25 |
+| 15 | A | 5 V through 330 ohms; 1 kilohm works with dimmer light |
+| 16 | K | Ground |
+
+A breadboard ground rail can connect VSS, RW, V0 and K to Pi ground. For adjustable
+contrast, use a 10-kilohm potentiometer with its outer legs at 5 V and ground and
+its wiper connected to V0 instead of grounding V0 directly. The extra backlight
+resistor also limits current when the module has no onboard limiting resistor.
+
+Pi GPIO outputs remain 3.3 V. A standard HD44780 accepts that logic level at a
+5 V supply, but clone controllers with higher input thresholds need a suitable
+unidirectional 3.3-to-5 V buffer, such as a 74HCT245. Never drive Pi GPIO with 5 V.
+Grounding RW makes the LCD write-only and prevents its data bus driving back into
+the Pi. Blank blocks before software initialization are normal; persistent blocks
+after initialization suggest contrast, pin mapping, or logic-level problems.
+
+The ordered `lcd_pins_bcm` config is `[RS, E, D4, D5, D6, D7]`. It must match the
+physical wiring. GPIO initialization and LCD appearance require the actual wired
+display; passing software tests is not proof of a physical display test.
+
+## Life Dashboard and Mac retirement
+
+`scripts/relay-gym-fitbit.py` runs on home-server as `gym-fitbit-relay.service` in
+the operator's user systemd instance. It reads the bounded Pi snapshot over SSH,
+using the already commissioned server identity and strict known-host checking.
+It stores a private source copy and atomically updates Life Dashboard's existing
+`data/bridge/fitbit-live.json`. There is no new public HTTP listener or port forward.
+The existing application worker imports minute history; Google Health sync still
+runs separately on the server and is not the live data path.
+
+```sh
+# On home-server, after establishing and checking SSH trust for gym-pi.local:
+python3 scripts/install-gym-fitbit-relay.py
+systemctl --user status gym-fitbit-relay --no-pager
+
+# On the Mac, as explicitly requested by the owner:
+python3 scripts/disable-mac-fitbit.py
+```
+
+The Mac bridge, watchdog and SSH Fitbit relay are disabled persistently. Their
+LaunchAgent plists remain for rollback. `~/.config/home-server/gym-pi-primary`
+prevents the Mac companion installer from re-enabling its old relay. The Resolve
+companion and server Google Health synchronization are unaffected.
+
+Rollback requires stopping the server gym relay first, removing that Mac marker,
+and using `launchctl enable` and `launchctl bootstrap` with the three retained
+Mac LaunchAgents. Run the Mac receiver only when intentionally returning live
+capture to it, so two receivers do not compete for the tracker's connection.
+
+Sources: [HD44780 controller datasheet](https://www.sparkfun.com/datasheets/LCD/HD44780.pdf),
+[Google heart-rate sharing](https://support.google.com/googlehealth/answer/14236705?hl=en),
+[btleplug](https://docs.rs/btleplug/0.11.8/btleplug/),
+[RPPAL GPIO](https://docs.rs/rppal/0.22.1/rppal/gpio/).
 
 References: [Raspberry Pi getting started](https://www.raspberrypi.com/documentation/computers/getting-started.html),
 [Pi OS cloud-init](https://www.raspberrypi.com/news/cloud-init-on-raspberry-pi-os/),

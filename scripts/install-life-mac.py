@@ -19,6 +19,8 @@ for suffix in ('ble','google'):
         subprocess.run(['launchctl','bootout',f'gui/{os.getuid()}/{label}'],capture_output=True)
         subprocess.run(['launchctl','disable',f'gui/{os.getuid()}/{label}'],check=True)
 for name,script in [('fitbit-relay','push-life-fitbit.py'),('mac-companion','life-mac-companion.py')]:
+    if name == 'fitbit-relay' and (Path.home()/'.config/home-server/gym-pi-primary').exists():
+        continue # The gym Pi owns live capture; preserve the user's explicit Mac retirement.
     label='com.egouda.life-dashboard.'+name
     p=agents/(label+'.plist')
     subprocess.run(['launchctl','bootout',f'gui/{os.getuid()}/{label}'],capture_output=True)
