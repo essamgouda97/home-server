@@ -22,14 +22,27 @@ and local proxy playback belong on the Mac.
    previews, transcription, proxy delivery and versioned OTIO rough cuts for
    DaVinci Resolve. This is planned follow-on work, not installed by this image.
 
-**Current boundary:** ingest.lan and its Codex worker are deployed. A new Pi 4 card
-is being prepared with the same pinned 64-bit OS, Ethernet DHCP, administrator SSH
+**Current boundary:** ingest.lan and its Codex worker are deployed. The new Pi 4 card
+is prepared and verified with the pinned 64-bit OS, Ethernet DHCP, administrator SSH
 keys and local console recovery. Physical Pi 4 boot, stable power, camera mounting,
 unplug/retry and reboot acceptance checks remain required. The automatic Pi daemon
 and restricted receiver are implemented, but commissioning installs and enables
 the application only after hardware and power checks pass. No camera is imported
 by the base OS image alone. [Clustering and editing plan](footage-clustering.md)
 records the later scene-oriented catalog and Resolve handoff.
+
+Pi 4 preparation completed on 2026-09-14 (Edmonton): the separate
+64,088,965,120-byte card passed complete image SHA-256 read-back and persisted
+first-boot configuration comparison. The owner requested a fresh reset without
+backup; the cancelled temporary archives were removed. Private verification is
+recorded in
+`~/.local/state/home-server-maintenance/footage-station/pi4/20260915T052410Z/prepared.json`.
+All card filesystems were unmounted and the USB reader was powered off for safe
+removal. The server's UDisks service was restored to active. Eight preparation
+tests and two power-gate tests passed on Mac and Ubuntu; server/network checks
+passed with all 29 containers running and Codex authenticated. The ingest UI's
+authentication, tracking API, worker heartbeat and cross-origin protections passed.
+Physical Pi 4 first boot and importer commissioning are still pending.
 
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
