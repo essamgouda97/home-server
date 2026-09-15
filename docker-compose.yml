@@ -65,6 +65,7 @@ services:
     image: home-server/life-dashboard:local
     container_name: life-dashboard-health
     restart: unless-stopped
+    stop_grace_period: 120s
     user: "1000:1000"
     command: [python3, /app/personal-finances/scripts/watch_health.py]
     volumes:
