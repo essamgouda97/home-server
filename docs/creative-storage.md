@@ -23,6 +23,17 @@ these folders; the catalog root itself is read-only. The process runs as UID/GID
 1000 and cannot bypass host ownership/permissions. System-owned files remain
 protected by Linux permissions. This is the home directory and storage pool,
 not an administrative file manager for the operating-system root filesystem.
+
+The catalog root is an explicit read-only bind of `config/filebrowser/catalog`
+at `/srv`; its child mounts expose the locations above. Do not use Creative as
+the catalog root. An old container retained that former `/srv` bind after the
+Compose configuration changed, causing Docker to create empty catalog mount
+directories inside Creative. The explicit catalog bind prevents that stale-mount
+inheritance. Only confirmed empty placeholders are removed during migration;
+existing code, media, downloads and home data remain in their original locations.
+The `.footage-ingest` dot-directory inside Creative is live importer state and
+must be retained. `Projects` holds footage, and `ProjectBackups` holds Resolve
+backups. `make check-files` checks the separation and live read/write behavior.
 Home and Storage include private dotfiles/application state readable by that
 user; keep this account private. Anonymous access, public shares and commands
 remain disabled. Do not use the file editor to modify a live application's DB.

@@ -192,6 +192,12 @@ services:
     ports:
       - "${SERVER_IP:-10.0.0.182}:8082:8080"
     volumes:
+      - type: bind
+        source: ./config/filebrowser/catalog
+        target: /srv
+        read_only: true
+        bind:
+          create_host_path: false
       - ${LIFE_DASHBOARD_DATA}/docs:/srv/LifeDashboard/docs
       - type: bind
         source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}

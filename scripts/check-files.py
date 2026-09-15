@@ -36,6 +36,11 @@ def call(path, method='GET', payload=None):
 listing = json.loads(call('/api/resources/'))
 assert set(roots) <= {x['name'] for x in listing['items']}, 'Missing root folders'
 print('PASS: all seven live server locations appear in files.lan.')
+creative = json.loads(call('/api/resources/Creative/'))
+aliases = set(roots) - {'Creative'}
+assert not (aliases | {'Creative', 'LifeDashboard'}) & {x['name'] for x in creative['items']}, \
+    'Server catalog mount placeholders leaked into the Creative workspace'
+print('PASS: Creative is separate from the server catalog.')
 for label, path in roots.items():
     call('/api/resources/'+label+'/')
     name = '.files-check-'+uuid.uuid4().hex+'.bin'
