@@ -20,7 +20,8 @@ and local proxy playback belong on the Mac.
    previews, transcription, proxy delivery and versioned OTIO rough cuts for
    DaVinci Resolve. This is planned follow-on work, not installed by this image.
 
-**Current boundary:** the boot card is provisioned and ready to boot. The automatic
+**Current boundary:** the boot card is provisioned and the owner has connected
+it to Pi power and Ethernet. The server console is live at ingest.lan. The automatic
 Pi daemon, restricted transfer receiver, server console and Codex metadata review
 queue are implemented in this repository. Physical Pi boot, read-only camera
 mounting, unplug/retry and reboot acceptance checks are still required. No camera
@@ -37,6 +38,19 @@ Five preparation regression tests and both existing server/network health checks
 passed. An initial partition-listing bug was corrected before final preparation;
 the untouched writable data was recovered and verified, and the original partition
 table is retained with that backup. Missing partition trees now fail closed.
+
+Server acceptance on 2026-09-14: all 21 transfer/mount-selection/workflow tests
+passed on both Mac and Ubuntu. The browser assignment flow worked at desktop and
+390px phone widths with no horizontal overflow or JavaScript errors. NPM rejected
+unauthenticated reads and cross-origin changes; authenticated tracking and worker
+heartbeat checks passed. A synthetic original reached the real Creative root,
+matched its SHA-256 manifest, and automatically produced a successful Codex review
+using the subscription login. Test media was removed after private evidence was
+archived under `~/.local/state/home-server-maintenance/footage-console/`.
+`make check-network` and `make check-server` passed, including all 29 containers.
+The Pi has not yet appeared through mDNS or the LAN SSH check; hardware acceptance
+remains pending. These results do not claim visual clustering or real camera-card
+mount/reboot testing.
 
 ## Hardware and first boot
 
@@ -207,6 +221,7 @@ python3 scripts/configure-footage-console.py
 docker compose --env-file server.conf --env-file .env build footage-console
 docker compose --env-file server.conf --env-file .env up -d footage-console footage-codex
 make check-server
+python3 scripts/check-footage-console.py
 ```
 
 Private runtime metadata is under `CREATIVE_ROOT/.footage-ingest`; never commit it.

@@ -9,6 +9,8 @@ See [the server operations guide](docs/server-operations.md) for SSH, Codex, che
 
 - [Creative Drive and Resolve workflow](docs/creative-storage.md): web uploads,
   Finder access, verified DJI footage import, and project backups.
+- [Footage tracking](http://ingest.lan): automatic imports, project/shoot assignments
+  and subscription-backed Codex intake reviews.
 - [Raspberry Pi footage station](docs/footage-station.md): reproducible Pi 3 B boot
   card, Ethernet/SSH onboarding, and camera-card import commissioning plan.
 - [Home Assistant and device plan](docs/smart-home.md): leak sensor, Chromecast,
