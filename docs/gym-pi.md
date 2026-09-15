@@ -181,8 +181,10 @@ and the live check below against the actual Life Dashboard API after phone
 approval. Both infrastructure health checks passed. Following physical wiring,
 the Pi's private configuration was changed to `lcd1602` and automatic service startup
 after a power cycle was observed. The owner measured expected supply/logic voltages
-at the LCD pads. Contrast adjustment made text visible, but garbled characters
-remain under investigation; readable physical output is not yet confirmed.
+at the LCD pads. Contrast adjustment made text visible. After deploying the
+display-reset support and reinitializing the LCD, the owner confirmed that the
+display fully works and the previously garbled text is readable. This confirms
+physical display operation; fresh Bluetooth data is checked separately below.
 
 To reinitialize a garbled LCD without restarting Bluetooth capture:
 
