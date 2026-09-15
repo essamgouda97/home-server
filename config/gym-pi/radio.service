@@ -1,0 +1,14 @@
+[Unit]
+Description=Set Canadian radio domain and enable gym Pi radios
+After=systemd-rfkill.service
+Before=NetworkManager.service bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/iw reg set CA
+ExecStart=/usr/sbin/rfkill unblock wlan
+ExecStart=/usr/sbin/rfkill unblock bluetooth
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

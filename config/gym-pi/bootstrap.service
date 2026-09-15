@@ -1,0 +1,16 @@
+[Unit]
+Description=Install gym Pi Bluetooth and serial development tools
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/var/lib/gym-pi/base-ready
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/gym-pi-bootstrap
+Restart=on-failure
+RestartSec=120
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target
