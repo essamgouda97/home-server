@@ -20,10 +20,13 @@ and local proxy playback belong on the Mac.
    previews, transcription, proxy delivery and versioned OTIO rough cuts for
    DaVinci Resolve. This is planned follow-on work, not installed by this image.
 
-**Current boundary:** card provisioning and base onboarding only. There is no
-Pi import UI or automatic camera import yet. No camera card is mounted, erased
-or imported by first boot. The goal remains active until the Pi importer has
-been commissioned and exercised on the real hardware.
+**Current boundary:** the boot card is provisioned. The resumable transfer backend
+and camera mount helper are implemented under `services/footage-station`, but not
+installed as production Pi services. There is no Pi import UI or automatic camera
+import yet. No camera card is mounted, erased or imported by first boot. The goal
+remains active until the Pi importer has been commissioned and exercised on the
+real hardware. [Clustering and editing plan](footage-clustering.md) records the
+owner's requirement for a scene-oriented, cross-camera editing library.
 
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
@@ -143,6 +146,42 @@ copy is still needed before reusing camera cards.
 
 The next stage must test this contract end-to-end rather than assuming the existing
 Mac SMB importer's publication semantics work unchanged on the Pi.
+
+## Transfer backend implementation
+
+`services/footage-station/receiver.py` is designed for an SSH forced command with
+a fixed Creative root. It accepts a bounded JSON/binary protocol, never shell
+commands. A single receiver lock serializes imports; partial files live under
+`.footage-ingest/partials`. A retry verifies the saved prefix against the source,
+continues at that byte offset, or explicitly resets a corrupt partial. Complete
+files are SHA-256 verified and atomically hard-linked into Originals without
+overwriting a conflicting name. Completion manifests are published only after all
+expected files have been verified and the originals rechecked.
+
+`transfer.py` reads an explicitly supplied camera folder, rejects symlinks and
+special files, detects source changes and emits machine-readable progress events.
+Its production SSH command requires a pinned host key and dedicated identity.
+Neither an SSH forced key nor a Pi service has been provisioned yet.
+
+`card_helper.py` will run through a narrow sudo rule for the future unprivileged
+Pi service account. It selects removable USB FAT/exFAT partitions, excludes the
+entire operating-system disk (including USB boot), rejects ambiguous IDs and
+mounts only read-only with noexec/nodev/nosuid. Mount/unmount operations have not
+yet been tested on the Pi. The UI must not bypass this helper or accept arbitrary
+source paths from a browser request.
+
+```sh
+python3 -m unittest discover -s services/footage-station -p 'test_*.py' -v
+```
+
+Transfer tests cover interrupted binary chunks, corrupt partials, identical reruns,
+conflicting originals, checksum failure, missing completion requirements, source
+and destination symlinks, path traversal and concurrent clients. Selection tests
+cover normal and USB boot disks, unknown roots, existing foreign mounts and
+duplicate IDs. Transfer tests pass on both macOS and the Ubuntu server. A real
+Mac→home-server SSH test also resumed a deliberately truncated chunk and published
+the manifest; repeating that import transferred zero media bytes. All test media
+was synthetic and the SSH test's private temporary data was removed afterward.
 
 ## Source references
 
