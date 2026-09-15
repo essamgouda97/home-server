@@ -134,7 +134,7 @@ def import_folder(source, project, card, command, progress=lambda event: None, s
             try:
                 verify_source(fd, row['identity'])
                 emit('hashing')
-                sha256 = digest_fd(fd)
+                sha256 = digest_fd(fd, progress=lambda position: emit('hashing', position))
                 verify_source(fd, row['identity'])
                 state = connection.request({'op': 'begin', 'project': project, 'card': card,
                     'path': path, 'size': row['size'], 'sha256': sha256})
@@ -143,7 +143,7 @@ def import_folder(source, project, card, command, progress=lambda event: None, s
                     if type(offset) is not int or not 0 <= offset <= row['size']:
                         raise ValueError('Server returned an invalid resume position.')
                     emit('checking-resume', offset)
-                    if digest_fd(fd, offset) != state['prefix_sha256']:
+                    if digest_fd(fd, offset, progress=lambda position: emit('checking-resume', position)) != state['prefix_sha256']:
                         connection.request({'op': 'reset'})
                         offset = 0
                     while offset < row['size']:

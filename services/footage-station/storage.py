@@ -36,7 +36,7 @@ def integer(value, maximum):
     return value
 
 
-def digest_fd(fd, length=None):
+def digest_fd(fd, length=None, progress=None):
     h = hashlib.sha256()
     position = 0
     while length is None or position < length:
@@ -47,6 +47,8 @@ def digest_fd(fd, length=None):
             break
         h.update(data)
         position += len(data)
+        if progress:
+            progress(position)
     return h.hexdigest()
 
 
@@ -74,4 +76,3 @@ def directory(root_fd, parts, create=True):
         yield fd
     finally:
         os.close(fd)
-

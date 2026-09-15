@@ -54,6 +54,7 @@ def main():
             install=r'''
 set -eu
 src="$1"
+systemctl stop footage-station.service 2>/dev/null || true
 id footage-station >/dev/null 2>&1 || useradd --system --home-dir /var/lib/footage-station --shell /usr/sbin/nologin footage-station
 install -d -o root -g root -m 755 /opt/footage-station /etc/footage-station
 install -d -o footage-station -g footage-station -m 700 /var/lib/footage-station
@@ -90,7 +91,7 @@ with os.fdopen(fd,'w') as out:
 os.replace(tmp,p)
 """
             run(args.server, 'python3 -c '+shlex.quote(updater), entry.encode())
-            run(args.pi, 'sudo -n systemctl enable --now footage-station.service')
+            run(args.pi, 'sudo -n systemctl enable footage-station.service && sudo -n systemctl restart footage-station.service')
             status=run(args.pi,'systemctl is-active footage-station.service').decode().strip()
             print('Pi service:',status)
             print('Open http://ingest.lan to see the station heartbeat, then insert a camera card.')
