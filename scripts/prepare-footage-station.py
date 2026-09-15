@@ -76,7 +76,7 @@ def validate_disk(disk, expected_size):
                 raise ValueError('Target has a system or non-removable mount: ' + mount)
 
 
-def seed(settings, public_keys):
+def seed(settings, public_keys, console_password_hash=None):
     keys = []
     for path in public_keys:
         for key in path.read_text().splitlines():
@@ -109,6 +109,12 @@ def seed(settings, public_keys):
             ['systemctl', 'enable', 'footage-station-bootstrap.service'],
             ['systemctl', 'start', '--no-block', 'footage-station-bootstrap.service']],
         'final_message': 'Footage station SSH ready; base package setup continues in systemd.'}
+    if console_password_hash is not None:
+        if not re.fullmatch(r'\$6\$[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{86}', console_password_hash):
+            raise ValueError('Console password must be a SHA-512 crypt hash from private storage.')
+        user['users'][0]['passwd'] = console_password_hash
+        user['users'][0]['lock_passwd'] = False
+        # Unlocking console access does not enable SSH password authentication.
     # JSON is a strict subset of YAML; no third-party YAML serializer is needed.
     network = {'network': {'version': 2, 'renderer': 'NetworkManager',
         'ethernets': {'wired': {'match': {'name': 'e*'}, 'dhcp4': True,
@@ -165,7 +171,13 @@ def backup_existing(real, disk, destination):
 
 def prepare(args):
     settings = json.loads((CONFIG / 'image.json').read_text())
-    seeds = seed(settings, args.public_key)
+    password_hash = None
+    if args.console_password_hash_file:
+        info = args.console_password_hash_file.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077:
+            raise ValueError('Console password hash file must be private (mode 0600).')
+        password_hash = args.console_password_hash_file.read_text().strip()
+    seeds = seed(settings, args.public_key, password_hash)
     real, disk = inspect(args.device, args.expected_size)
     print(json.dumps(disk, indent=2), flush=True)
     if not args.erase:
@@ -247,6 +259,8 @@ def main():
     parser.add_argument('--expected-size', type=int, required=True)
     parser.add_argument('--image', type=Path, required=True, help='Verified, decompressed .img')
     parser.add_argument('--public-key', type=Path, action='append', required=True)
+    parser.add_argument('--console-password-hash-file', type=Path,
+                        help='Private mode-0600 SHA-512 crypt hash; SSH stays key-only')
     parser.add_argument('--backup-root', type=Path, required=True)
     parser.add_argument('--erase', action='store_true')
     args = parser.parse_args()

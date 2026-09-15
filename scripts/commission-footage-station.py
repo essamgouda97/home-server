@@ -22,9 +22,10 @@ def main():
     parser.add_argument('--pi', default='egouda@footage-pi.local')
     parser.add_argument('--server', default='home-server')
     args = parser.parse_args()
+    expected = json.loads((REPO/'config/footage-station/image.json').read_text())['target_model']
     model = run(args.pi, 'cat /proc/device-tree/model').decode().rstrip('\x00\n')
-    if 'Raspberry Pi 3 Model B' not in model:
-        raise SystemExit('Target is not the expected Raspberry Pi 3 B; no changes made.')
+    if not model.startswith(expected + ' Rev '):
+        raise SystemExit('Target is not the expected ' + expected + '; no changes made.')
     run(args.pi, 'test -e /var/lib/footage-station/base-ready && sudo -n true')
     settings = dict(line.split('=',1) for line in (REPO/'server.conf').read_text().splitlines()
                     if line and not line.startswith('#') and '=' in line)

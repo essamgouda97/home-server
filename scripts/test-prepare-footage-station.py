@@ -64,6 +64,24 @@ class PreparationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 prepare.hash_file(p, 5)
 
+    def test_console_recovery_does_not_enable_ssh_passwords(self):
+        config = json.loads((prepare.CONFIG / 'image.json').read_text())
+        self.assertEqual(config['target_model'], 'Raspberry Pi 4 Model B')
+        with tempfile.TemporaryDirectory() as temporary:
+            key = Path(temporary) / 'key.pub'
+            key.write_text('ssh-ed25519 AAAA synthetic-test-key\n')
+            password_hash = '$6$test$' + 'a' * 86
+            seeds = prepare.seed(config, [key], password_hash)
+            user = json.loads(seeds['user-data'].split('\n', 1)[1])
+            self.assertEqual(user['users'][0]['passwd'], password_hash)
+            self.assertFalse(user['users'][0]['lock_passwd'])
+            self.assertFalse(user['ssh_pwauth'])
+            ssh_config = next(f['content'] for f in user['write_files'] if 'sshd_config.d' in f['path'])
+            self.assertIn('PasswordAuthentication no', ssh_config)
+            self.assertIn('KbdInteractiveAuthentication no', ssh_config)
+            with self.assertRaises(ValueError):
+                prepare.seed(config, [key], 'plaintext-is-not-a-hash')
+
     def test_lsblk_explicitly_requests_tree_without_name_column(self):
         device = MagicMock()
         device.__str__.return_value = '/dev/disk/by-id/usb-card'
