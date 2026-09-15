@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew the private household HTTPS certificate
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/bin/sh %h/workspace/home-server/scripts/renew-household-certificate.sh

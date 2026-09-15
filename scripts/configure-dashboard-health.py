@@ -45,14 +45,18 @@ def main():
             db.backup(backup)
         db.execute('BEGIN IMMEDIATE')
         for host, probe in PROBES.items():
-            db.execute('UPDATE app SET ping_url=? WHERE rtrim(href,"/")=?', (probe, 'http://' + host + '.lan'))
+            db.execute('UPDATE app SET ping_url=? WHERE rtrim(href,"/") IN (?,?)',
+                       (probe, 'http://' + host + '.lan', 'https://' + host + '.home.egouda.xyz'))
         board = db.execute('SELECT id FROM board WHERE name=?', ('home-server',)).fetchone()[0]
         section = db.execute('SELECT id FROM section WHERE board_id=? AND kind=?', (board, 'empty')).fetchone()[0]
         layouts = db.execute('SELECT id,column_count FROM layout WHERE board_id=?', (board,)).fetchall()
         positions = {lid: [0, db.execute('SELECT COALESCE(MAX(y_offset+height),0) FROM item_layout WHERE layout_id=? AND section_id=?', (lid,section)).fetchone()[0]] for lid,_ in layouts}
         for name, host, probe, description, short in ADDITIONS:
             href = 'http://' + host + '.lan'
-            app = db.execute('SELECT id FROM app WHERE rtrim(href,"/")=?', (href,)).fetchone()
+            secure_href = 'https://' + host + '.home.egouda.xyz'
+            app = db.execute('SELECT id FROM app WHERE rtrim(href,"/") IN (?,?)', (href,secure_href)).fetchone()
+            if Path('/mnt/server/npm/data/nginx/custom/home-server/household-https.conf').exists():
+                href = secure_href
             app_id = app[0] if app else uuid.uuid4().hex[:24]
             if not app:
                 icon = 'data:image/svg+xml,' + quote('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="16" fill="#36354a"/><text x="40" y="47" text-anchor="middle" font-family="sans-serif" font-size="22" fill="white">'+short+'</text></svg>')

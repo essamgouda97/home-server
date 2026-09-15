@@ -105,6 +105,10 @@ published. Pi-hole uses public resolvers directly, avoiding a forwarding loop.
 
 ## Household DHCP migration plan — not executed
 
+**Superseded for household service access:** [domain-based HTTPS](household-https.md)
+now provides access on the existing Wi-Fi without DHCP changes. Keep this plan
+only for a separately requested household ad-blocking/network migration.
+
 ### Gateway inspection: 2026-09-15
 
 Authenticated, read-only inspection confirmed:
