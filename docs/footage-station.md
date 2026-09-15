@@ -42,7 +42,7 @@ removal. The server's UDisks service was restored to active. Eight preparation
 tests and two power-gate tests passed on Mac and Ubuntu; server/network checks
 passed with all 29 containers running and Codex authenticated. The ingest UI's
 authentication, tracking API, worker heartbeat and cross-origin protections passed.
-Physical Pi 4 first boot and importer commissioning are still pending.
+The initial card preparation was complete; subsequent boot diagnosis is recorded below.
 
 ### Pi 4 offline network diagnosis
 
@@ -83,6 +83,9 @@ and enables SSH, Avahi and diagnostic collection. Cloud-init networking is disab
 on this already-provisioned card so Netplan owns subsequent network configuration.
 Unmount and safely eject the card afterward. Real Ethernet recovery is **pending
 the next hardware boot**, not proven by offline checks.
+The repair was applied on 2026-09-14 (Edmonton), verified after a fresh read-only
+mount, and the reader was powered off. Preparation tests and both infrastructure
+health checks passed. The Pi is ready for that hardware retest.
 
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
