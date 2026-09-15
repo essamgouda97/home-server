@@ -3,13 +3,15 @@
 The owner's 2026-09-14 clarification makes clean **data clustering** a central
 requirement: the library must help them find and assemble a video, not merely
 store camera files. The flow below is the proposed server-side follow-on to the
-Pi importer. Clustering, its review UI, proxy delivery and Resolve integration are
-not installed yet.
+Pi importer. The ingest.lan tracking console provides import/project/session and Codex-job
+status. Visual scene clustering, its review controls, proxy delivery and Resolve
+integration are later stages; metadata-only Codex intake notes are not scene analysis.
 
 ## End-to-end workflow
 
 1. Create a project with a short creative brief, target duration and aspect ratio.
-   Name the shoot/session when importing a card; preserve that explicit choice.
+   Cards import automatically into Inbox or the selected future-card destination.
+   Assign project and shoot/session names afterward on ingest.lan; preserve those choices.
 2. The Pi mounts the selected camera card read-only and transfers its files to the
    home server. It resumes partial uploads, checks source/server SHA-256, refuses
    conflicts and records a completion manifest. It never erases camera media.

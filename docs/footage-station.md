@@ -12,21 +12,21 @@ and local proxy playback belong on the Mac.
    image, Ethernet DHCP, SSH public keys and repeatable first-boot configuration.
 2. After the owner inserts the card and powers the Pi, verify real hardware boot,
    storage expansion, networking, SSH and base package installation.
-3. Commission the camera-card importer: read-only source mounting, phone-accessible
-   project/card selection, copy progress, retries, checksums, conflict refusal,
+3. Commission the camera-card importer: read-only source mounting, automatic
+   Inbox imports, server-side project assignment, progress, retries, checksums, conflict refusal,
    manifests and safe card removal. Test unplug/retry and reboot recovery using
    synthetic footage before importing valuable originals.
 4. Connect verified import manifests to the future server shot catalog, browser
    previews, transcription, proxy delivery and versioned OTIO rough cuts for
    DaVinci Resolve. This is planned follow-on work, not installed by this image.
 
-**Current boundary:** the boot card is provisioned. The resumable transfer backend
-and camera mount helper are implemented under `services/footage-station`, but not
-installed as production Pi services. There is no Pi import UI or automatic camera
-import yet. No camera card is mounted, erased or imported by first boot. The goal
-remains active until the Pi importer has been commissioned and exercised on the
-real hardware. [Clustering and editing plan](footage-clustering.md) records the
-owner's requirement for a scene-oriented, cross-camera editing library.
+**Current boundary:** the boot card is provisioned and ready to boot. The automatic
+Pi daemon, restricted transfer receiver, server console and Codex metadata review
+queue are implemented in this repository. Physical Pi boot, read-only camera
+mounting, unplug/retry and reboot acceptance checks are still required. No camera
+card is mounted or imported by the base OS image alone; commissioning installs
+and enables the application. [Clustering and editing plan](footage-clustering.md)
+records the later scene-oriented, cross-camera catalog and Resolve handoff.
 
 Prepared on 2026-09-14 (Edmonton): the 63,864,569,856-byte USB card passed
 full-image SHA-256 read-back and persisted boot-configuration verification.
@@ -128,10 +128,10 @@ The timestamped backup contains `archives.json` and, on success, `prepared.json`
 Backups are private and root-owned; use sudo to inspect/restore them. Do not commit
 them. Test the guards with `python3 scripts/test-prepare-footage-station.py`.
 
-## Planned import contract
+## Automatic import contract
 
-The Pi's own root/boot disk must never appear as an ingest source. Only explicitly
-selected removable camera volumes are mounted read-only. Each shoot has a project
+The Pi's own root/boot disk must never appear as an ingest source. Only supported removable
+USB FAT/exFAT camera volumes are mounted read-only; their DCIM folders import automatically. Each shoot has a project
 and unique card identifier; original file names and relative paths are retained.
 Use the existing `Creative/Projects/<project>/Originals/<card>/` layout, alongside
 SHA-256 manifests, compatible with `scripts/ingest-footage.py` on the Mac.
@@ -161,9 +161,9 @@ expected files have been verified and the originals rechecked.
 `transfer.py` reads an explicitly supplied camera folder, rejects symlinks and
 special files, detects source changes and emits machine-readable progress events.
 Its production SSH command requires a pinned host key and dedicated identity.
-Neither an SSH forced key nor a Pi service has been provisioned yet.
+The commissioning script installs the dedicated forced key and Pi service after hardware boot.
 
-`card_helper.py` will run through a narrow sudo rule for the future unprivileged
+`card_helper.py` runs through a narrow sudo rule for the unprivileged
 Pi service account. It selects removable USB FAT/exFAT partitions, excludes the
 entire operating-system disk (including USB boot), rejects ambiguous IDs and
 mounts only read-only with noexec/nodev/nosuid. Mount/unmount operations have not
@@ -182,6 +182,85 @@ duplicate IDs. Transfer tests pass on both macOS and the Ubuntu server. A real
 Mac→home-server SSH test also resumed a deliberately truncated chunk and published
 the manifest; repeating that import transferred zero media bytes. All test media
 was synthetic and the SSH test's private temporary data was removed afterward.
+
+## Tracking interface and server deployment
+
+Open **http://ingest.lan** from a Mac or phone, on the LAN or through the existing
+Tailscale split-DNS setup. Sign in as `egouda` with the existing home-services
+password. NPM authenticates every request; the console has no published host port.
+It shows station freshness, copy/verification phases, incomplete and verified
+imports, project/session assignments, manifest paths and Codex job results.
+
+New cards default to `Inbox`. You can set a different destination for future cards,
+or assign descriptive project and shoot names after import. Assignments are
+catalog metadata and do not relocate originals. An unchanged card reinserted after
+reboot keeps its route, verifies existing bytes and does not repeat paid Codex work.
+Adding/removing files changes the card-selection fingerprint and creates a new
+batch; unchanged files in that changed batch may occupy another copy. Automatic
+cross-batch deduplication and scene clustering are not implemented. Do not erase
+camera originals based on a suggestion that two shots look similar.
+
+Run on the server as its owner:
+
+```sh
+python3 scripts/configure-footage-console.py
+docker compose --env-file server.conf --env-file .env build footage-console
+docker compose --env-file server.conf --env-file .env up -d footage-console footage-codex
+make check-server
+```
+
+Private runtime metadata is under `CREATIVE_ROOT/.footage-ingest`; never commit it.
+The Codex worker has a private persistent copy of the owner's subscription login
+under `HOME_SERVER_SECRETS_DIR/footage-codex-auth`, seeded only when missing so token
+refresh survives restarts. No API key or separate API billing is used. Reviews
+are serialized and have a 180-second timeout; failures are visible and retriable.
+A retry request never overwrites a running job. CLI shell, browser, app, hooks and
+multi-agent tools are disabled, originals are mounted read-only, and the current
+review input contains only file names/sizes and project/session labels (up to 200
+files, with truncation disclosed). This is intake advice, **not visual clustering**.
+Generated notes cannot move files or execute a suggested command.
+
+[Codex non-interactive documentation](https://learn.chatgpt.com/docs/non-interactive-mode)
+describes saved CLI authentication and automation. This is a private home-server
+worker; the public repository contains deployment code only, never account tokens,
+private manifests or job output.
+
+## Commission the booted Pi
+
+From the Mac, first verify the OS and host identity, then install the application:
+
+```sh
+python3 scripts/check-footage-station.py
+python3 scripts/commission-footage-station.py
+# If mDNS is unavailable, pass --pi egouda@<DHCP-address> to commissioning.
+```
+
+The installer checks the Pi 3 B model and bootstrap completion marker. It installs
+root-owned application files and a limited mount helper, creates an unprivileged
+`footage-station` account, generates its private transfer key **on the Pi**, pins
+the server's host public key obtained through the authenticated Mac→server SSH
+connection, and registers a restricted forced command on the server. That key
+cannot open a shell, forward ports or choose a destination outside Creative.
+It then enables `footage-station.service` for automatic start after reboot.
+
+The service polls every 10 seconds. A connected camera card imports without a
+screen or project prompt. Failures back off from 30 seconds to five minutes;
+**Retry import** resets that delay. Original file contents are never written on the
+card. **Safe to remove** appears only after complete verification and successful
+unmount. Keep another independent copy before reusing the camera card.
+
+Before commissioning is considered complete, verify these on actual hardware:
+
+- Model, expanded root filesystem, Ethernet, SSH and base packages.
+- Service heartbeat on ingest.lan after installation and after a Pi reboot.
+- Boot disk excluded; supported camera DCIM mounted read-only.
+- Synthetic card import, SHA-256 match, manifest and safe ejection.
+- Interrupted transfer resumes; no incomplete batch shown as verified.
+- Reinserted unchanged card transfers zero already-verified bytes.
+- Automatic Codex job completes and its notes appear on the tracking page.
+
+Server tests cover the protocol and state machine but do not substitute for these
+hardware checks. Run `make check-network` from the Mac after deployment.
 
 ## Source references
 

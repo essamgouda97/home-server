@@ -1,5 +1,56 @@
 services:
 
+  footage-console:
+    image: home-server/footage:local
+    build: ./services/footage-station
+    container_name: footage-console
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    environment:
+      CONSOLE_ORIGIN: http://ingest.lan
+    volumes:
+      - ${CREATIVE_ROOT}:/creative:ro
+      - ${CREATIVE_ROOT}/.footage-ingest:/creative/.footage-ingest
+    networks: [proxy]
+    tmpfs: [/tmp:rw,nosuid,nodev,size=32m,mode=1777]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  footage-codex:
+    image: home-server/footage:local
+    build: ./services/footage-station
+    container_name: footage-codex
+    command: [python3, /app/worker.py]
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    volumes:
+      - ${CREATIVE_ROOT}:/creative:ro
+      - ${CREATIVE_ROOT}/.footage-ingest:/creative/.footage-ingest
+      - ${HOME_SERVER_SECRETS_DIR}/footage-codex-auth:/home/node/.codex
+    networks: [assistant]
+    tmpfs: [/tmp:rw,nosuid,nodev,size=256m,mode=1777]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 2
+    healthcheck:
+      test: [CMD, python3, -c, "import os,time; assert time.time()-os.stat('/creative/.footage-ingest/worker.json').st_mtime<240"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   # Source is the private essamgouda97/life-dashboard repository, cloned over SSH.
   life-dashboard:
     image: home-server/life-dashboard:local

@@ -1,0 +1,23 @@
+map "$request_method:$http_origin" $footage_reject_origin {
+    default 1;
+    ~^(GET|HEAD): 0;
+    "POST:http://ingest.lan" 0;
+}
+server {
+    listen 80;
+    server_name ingest.lan;
+    auth_basic "Home footage";
+    auth_basic_user_file /data/nginx/custom/home-server/footage.htpasswd;
+    client_max_body_size 8k;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    if ($footage_reject_origin) { return 403; }
+    location / {
+        resolver 127.0.0.11 valid=30s;
+        set $footage_backend http://footage-console:8080;
+        proxy_pass $footage_backend;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization "";
+        proxy_read_timeout 20s;
+    }
+}

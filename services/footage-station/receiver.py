@@ -6,86 +6,17 @@ stdin/stdout carry newline-delimited JSON. A `chunk` header is followed by exact
 as an SSH forced command; choose its root in server-owned configuration only.
 """
 import argparse
-from contextlib import contextmanager
-from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
-import stat
 import sys
 import uuid
 
-CHUNK = 4 * 1024 * 1024
-HEADER_LIMIT = 65536
-MAX_FILE = 2 * 1024**4
-
-
-def stamp():
-    return datetime.now(timezone.utc).isoformat()
-
-
-def identifier(value):
-    if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,100}', value) or '..' in value:
-        raise ValueError('Use letters, numbers, dots, hyphens or underscores for project/card names.')
-    return value
-
-
-def relative_parts(value):
-    if not isinstance(value, str) or len(value) > 4096 or '\\' in value or any(ord(c) < 32 for c in value):
-        raise ValueError('Invalid camera file path.')
-    parts = value.split('/')
-    if len(parts) > 32 or any(p in ('', '.', '..') or len(p.encode()) > 255 for p in parts):
-        raise ValueError('Camera file path must be relative and cannot traverse directories.')
-    return parts
-
-
-def integer(value, maximum):
-    if type(value) is not int or not 0 <= value <= maximum:
-        raise ValueError('Invalid byte count.')
-    return value
-
-
-def digest_fd(fd, length=None):
-    h = hashlib.sha256()
-    position = 0
-    while length is None or position < length:
-        data = os.pread(fd, CHUNK if length is None else min(CHUNK, length-position), position)
-        if not data:
-            if length is not None and position != length:
-                raise ValueError('File ended before the expected byte count.')
-            break
-        h.update(data)
-        position += len(data)
-    return h.hexdigest()
-
-
-def regular(fd):
-    if not stat.S_ISREG(os.fstat(fd).st_mode):
-        os.close(fd)
-        raise ValueError('Expected a regular file.')
-    return fd
-
-
-@contextmanager
-def directory(root_fd, parts, create=True):
-    fd = os.dup(root_fd)
-    try:
-        for part in parts:
-            if create:
-                try:
-                    os.mkdir(part, 0o750, dir_fd=fd)
-                    os.fsync(fd)
-                except FileExistsError:
-                    pass
-            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
-            os.close(fd)
-            fd = child
-        yield fd
-    finally:
-        os.close(fd)
+from storage import CHUNK, HEADER_LIMIT, MAX_FILE, stamp, identifier, relative_parts, integer, digest_fd, regular, directory
+from state import State
 
 
 class Receiver:
@@ -97,6 +28,8 @@ class Receiver:
         self.verified = {}
         self.started_at = stamp()
         self.closed = False
+        self.state = State(root)
+        self.route = None
         try:
             with directory(self.root_fd, ['.footage-ingest']) as spool:
                 self.lock_fd = regular(os.open('receiver.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,
@@ -115,6 +48,59 @@ class Receiver:
             if self.lock_fd is not None:
                 os.close(self.lock_fd)
             os.close(self.root_fd)
+            self.state.close()
+
+    def plan(self, request):
+        if self.context:
+            raise ValueError('Select the card before transferring files.')
+        source = identifier(request.get('source_uuid'))
+        selection = request.get('selection')
+        if not isinstance(selection, str) or not re.fullmatch('[0-9a-f]{64}', selection):
+            raise ValueError('Invalid card selection fingerprint.')
+        key = hashlib.sha256((source + ':' + selection).encode()).hexdigest()
+        route = self.state.read('routes/' + key + '.json')
+        if route is None:
+            policy = self.state.read('policy.json', {})
+            route = {'id': key, 'source_uuid': source,
+                     'project': identifier(policy.get('project', 'Inbox')),
+                     'card': source + '-' + selection[:16], 'created_at': stamp()}
+            self.state.write('routes/' + key + '.json', route)
+        self.route = route
+        self.context = (route['project'], route['card'])
+        if not self.state.read('imports/' + key + '.json'):
+            self.state.write('imports/' + key + '.json', dict(route, status='importing',
+                file_count=0, total_bytes=0, manifest=None))
+        self.state.write('station.json', dict(route, phase='scanning', seen_at=stamp()))
+        return route
+
+    def status(self, request):
+        event = request.get('event', {})
+        if not isinstance(event, dict):
+            raise ValueError('Invalid progress event.')
+        clean = {}
+        for key in ('phase', 'file', 'error', 'source_uuid'):
+            if key in event:
+                value = event[key]
+                if not isinstance(value, str) or len(value) > 4096:
+                    raise ValueError('Invalid progress text.')
+                clean[key] = value
+        for key in ('file_index', 'file_count', 'file_bytes', 'file_offset',
+                    'verified_bytes', 'total_bytes', 'transferred_bytes'):
+            if key in event:
+                clean[key] = integer(event[key], MAX_FILE * 1000)
+        clean['safe_to_remove'] = event.get('safe_to_remove') is True
+        previous = self.state.read('station.json', {})
+        self.state.write('station.json', dict(previous, **clean, seen_at=stamp()))
+        key = (self.route or previous).get('id')
+        if key and clean.get('phase') not in ('waiting', 'safe', 'mounting'):
+            row = self.state.read('imports/' + identifier(key) + '.json', {})
+            if row and not row.get('verified_at'):
+                row.update(status=clean.get('phase', row.get('status')), updated_at=stamp())
+                for field in ('file_count', 'total_bytes', 'verified_bytes', 'error'):
+                    if field in clean:
+                        row[field] = clean[field]
+                self.state.write('imports/' + key + '.json', row)
+        return self.state.read('policy.json', {'project': 'Inbox'})
 
     def target(self, path):
         return ['Projects', self.context[0], 'Originals', self.context[1], *relative_parts(path)]
@@ -265,11 +251,27 @@ class Receiver:
             finally:
                 os.unlink(partial, dir_fd=parent)
                 os.fsync(parent)
-        return {'state': 'complete', 'file_count': count,
-                'manifest': '/'.join(['Projects', project, 'Manifests', name])}
+        manifest = '/'.join(['Projects', project, 'Manifests', name])
+        if self.route:
+            key = self.route['id']
+            previous = self.state.read('imports/' + key + '.json', {})
+            # Queue before publication of the verified index; a fast worker must
+            # never finish a job that this connection then resets to queued.
+            if not previous.get('verified_at'):
+                self.state.write('jobs/' + key + '.json',
+                    {'id': key, 'status': 'queued', 'queued_at': stamp(), 'basis': 'file metadata'})
+            self.state.write('imports/' + key + '.json', dict(self.route,
+                status='verified', verified_at=report['verified_at'], file_count=count,
+                total_bytes=sum(row['bytes'] for row in self.verified.values()),
+                manifest=manifest))
+        return {'state': 'complete', 'file_count': count, 'manifest': manifest}
 
     def handle(self, request, stream):
         operation = request.get('op')
+        if operation == 'plan':
+            return self.plan(request)
+        if operation == 'status':
+            return self.status(request)
         if operation == 'begin':
             return self.begin(request)
         if operation == 'chunk':

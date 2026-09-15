@@ -1,0 +1,21 @@
+[Unit]
+Description=Automatic verified footage import station
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=footage-station
+Group=footage-station
+ExecStart=/usr/bin/python3 /opt/footage-station/station.py
+Restart=always
+RestartSec=15
+TimeoutStopSec=20
+KillMode=control-group
+UMask=0077
+# NoNewPrivileges/PrivateMounts cannot be used: the narrowly scoped root helper
+# needs sudo and must mount cards in the same namespace as the reader process.
+
+[Install]
+WantedBy=multi-user.target

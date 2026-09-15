@@ -5,14 +5,16 @@ The Pi mount helper/UI must supply a read-only camera folder, never its boot dis
 This module only reads its source. It never unmounts, erases or reformats a device.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
 import stat
 import subprocess
 import sys
+import time
 
-from receiver import CHUNK, HEADER_LIMIT, directory, digest_fd, identifier, regular, relative_parts
+from storage import CHUNK, HEADER_LIMIT, directory, digest_fd, identifier, regular, relative_parts
 
 
 class Connection:
@@ -88,9 +90,10 @@ def verify_source(fd, expected):
         raise ValueError('Camera file changed during import; no completion manifest was requested.')
 
 
-def import_folder(source, project, card, command, progress=lambda event: None):
-    identifier(project)
-    identifier(card)
+def import_folder(source, project, card, command, progress=lambda event: None, source_uuid=None):
+    if source_uuid is None:
+        identifier(project)
+        identifier(card)
     root_fd = os.open(source, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     connection = None
     try:
@@ -101,11 +104,26 @@ def import_folder(source, project, card, command, progress=lambda event: None):
         connection = Connection(command)
         if connection.request({'op': 'ping'}).get('protocol') != 1:
             raise ValueError('Server transfer protocol is incompatible.')
+        last_report = [0, None]
+        if source_uuid is not None:
+            # Routing hint only; SHA-256 still verifies every byte on each import.
+            selection = hashlib.sha256(json.dumps([
+                ['/'.join(row['parts']), row['size'], row['identity'][3]] for row in rows
+            ], separators=(',', ':')).encode()).hexdigest()
+            route = connection.request({'op': 'plan', 'source_uuid': source_uuid, 'selection': selection})
+            project, card = route['project'], route['card']
+
+        def report(event):
+            progress(event)
+            now = time.monotonic()
+            if source_uuid is not None and (now-last_report[0] >= 2 or event['phase'] != last_report[1]):
+                connection.request({'op': 'status', 'event': event})
+                last_report[:] = [now, event['phase']]
         for index, row in enumerate(rows):
             path = '/'.join(row['parts'])
 
             def emit(phase, offset=0):
-                progress({'phase': phase, 'file': path, 'file_index': index + 1,
+                report({'phase': phase, 'file': path, 'file_index': index + 1,
                           'file_count': len(rows), 'file_bytes': row['size'],
                           'file_offset': offset, 'verified_bytes': completed,
                           'total_bytes': total, 'transferred_bytes': transferred})
@@ -149,10 +167,10 @@ def import_folder(source, project, card, command, progress=lambda event: None):
         # Refuse completion if the source file set changed since enumeration.
         if snapshot(root_fd) != rows:
             raise ValueError('Camera folder changed during import. Retry before claiming completion.')
-        progress({'phase': 'verifying-import', 'verified_bytes': completed,
+        report({'phase': 'verifying-import', 'verified_bytes': completed,
                   'total_bytes': total, 'file_count': len(rows), 'transferred_bytes': transferred})
         result = connection.request({'op': 'complete', 'file_count': len(rows)})
-        progress(dict(result, phase='complete', verified_bytes=completed,
+        report(dict(result, phase='complete', verified_bytes=completed,
                       total_bytes=total, transferred_bytes=transferred))
         return result
     finally:
