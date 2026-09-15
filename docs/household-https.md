@@ -55,6 +55,40 @@ Drive/Draw; on 2026-09-15 it was aligned with that existing household password
 after the owner reported login failure. A private SQLite backup was taken first,
 and actual HTTPS credential login plus authenticated-session retrieval passed.
 
+### Media credentials and family accounts
+
+The owner also requested aligning Jellyfin's `egouda` password with the same
+household credential. The direct Jellyfin API and Requests initially rejected
+that password with HTTP 401; this was independent of HTTPS. The supported
+Jellyfin password API updated the account, and Homarr's encrypted Jellyfin
+integration password was updated alongside it. No service restart was needed.
+Private SQLite backups are under
+`~/.local/state/home-server-maintenance/jellyfin-password/`.
+
+`python3 scripts/check-household-media-login.py` on the server verifies real
+Jellyfin authentication and both Requests routes, checks the authenticated user,
+and signs its test sessions out. All passed after the alignment. It reads the
+private household secret without displaying it. Run
+`scripts/align-jellyfin-password.py` only when the owner explicitly requests
+another alignment, not as a routine health check.
+
+To create a separate family account, run on the Mac in Terminal:
+
+```sh
+python3 scripts/create-media-user.py --username mgouda --display-name Mariam
+```
+
+The hidden prompt asks twice for a new password. The script sends it through
+SSH stdin, creates a password-protected Jellyfin user, imports only that user
+into Requests, and verifies login including the HTTPS route. Passwords are not
+written to command arguments, files, logs or the chat. Requests uses Jellyfin
+authentication; its friendly display name can differ from the `mgouda` login.
+New accounts have normal media access, no administrative or media-deletion
+rights, and standard request permission (owner approval required). Existing
+accounts are not overwritten. A private result file on the Mac records only
+account IDs and pass/fail status. A partial failure needs inspection before
+retrying; the script refuses to recreate an existing Jellyfin account.
+
 ## Reproduce and maintain
 
 On the Mac, `python3 scripts/configure-household-dns.py` reads the existing
