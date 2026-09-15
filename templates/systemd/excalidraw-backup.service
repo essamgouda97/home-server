@@ -1,0 +1,7 @@
+[Unit]
+Description=Consistent private whiteboard backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/workspace/home-server/scripts/backup-excalidraw.py
+UMask=0077

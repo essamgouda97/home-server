@@ -1,0 +1,40 @@
+# Staged DNS: existing dnsmasq keeps port 53 until a tested cutover.
+services:
+  pihole:
+    image: pihole/pihole:2026.07.2
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "${SERVER_IP}:1053:53/tcp"
+      - "${SERVER_IP}:1053:53/udp"
+      - "127.0.0.1:18081:80"
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD_FILE: pihole_password
+      FTLCONF_dns_listeningMode: all
+      FTLCONF_dns_upstreams: "1.1.1.1;9.9.9.9"
+      FTLCONF_misc_dnsmasq_lines: "address=/lan/${SERVER_IP};local=/lan/"
+      FTLCONF_dhcp_active: "false"
+      FTLCONF_ntp_ipv4_active: "false"
+      FTLCONF_ntp_ipv6_active: "false"
+      FTLCONF_ntp_sync_active: "false"
+      FTLCONF_dns_queryLogging: "false"
+      FTLCONF_misc_privacylevel: "3"
+    volumes:
+      - ${SERVER_DATA_DIR}/pihole:/etc/pihole
+    secrets:
+      - pihole_password
+    networks: [proxy]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "dig +short @127.0.0.1 home.lan | grep -q '${SERVER_IP}'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+secrets:
+  pihole_password:
+    file: ${HOME_SERVER_SECRETS_DIR}/pihole_password
+networks:
+  proxy:
+    external: true
+    name: home-server_proxy

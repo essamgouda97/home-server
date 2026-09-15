@@ -419,6 +419,7 @@ services:
       - ${SERVER_DATA_DIR:-/mnt/server}/npm/letsencrypt:/etc/letsencrypt
     networks:
       - proxy
+      - canvas
 
   dnsmasq:
     image: jpillora/dnsmasq
@@ -476,6 +477,7 @@ services:
       - SECRET_ENCRYPTION_KEY=${HOMARR_ENCRYPTION_KEY}
     networks:
       - proxy
+      - canvas
 
   uptime-kuma:
     image: louislam/uptime-kuma:1
@@ -716,6 +718,9 @@ secrets:
     file: ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/creative_password
 
 networks:
+  canvas:
+    external: true
+    name: home-canvas
   voice:
     driver: bridge
     internal: true

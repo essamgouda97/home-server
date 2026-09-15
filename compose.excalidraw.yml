@@ -1,0 +1,22 @@
+services:
+  excalidraw:
+    image: home-server/excalidraw:a1977d8
+    build:
+      context: ${SERVER_HOME}/.local/share/home-server/excalidraw
+      dockerfile: Dockerfile.home-server
+    container_name: excalidraw
+    restart: unless-stopped
+    volumes:
+      - /srv/mergerfs/ssd/excalidraw:/data
+    networks: [canvas]
+    mem_limit: 768m
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+networks:
+  canvas:
+    name: home-canvas
+    internal: true

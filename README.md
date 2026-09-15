@@ -22,6 +22,8 @@ See [the server operations guide](docs/server-operations.md) for SSH, Codex, che
 - [Local voice](docs/local-voice.md): open-source Whisper/Piper speech, phone
   microphone, fully local commands and the path to a DIY voice remote.
 - [Configuration boundaries and NixOS migration](docs/nixos-migration.md).
+- [Private whiteboard and household DNS](docs/design-dns-maintenance.md): saved
+  Excalidraw boards, Codex MCP, staged Pi-hole, and DHCP migration/rollback plan.
 - [Setup completion criteria](docs/creative-home-plan.md).
 
 **Inspired by:** https://github.com/GreenFrogSB/LMDS
@@ -59,6 +61,8 @@ make setup-vpn
 
 # 5. Complete storage/private credentials and Codex login prerequisites first:
 # docs/creative-storage.md, docs/codex-home.md and docs/local-voice.md
+# Create the shared private whiteboard network before the main stack:
+docker network inspect home-canvas >/dev/null 2>&1 || docker network create --internal home-canvas
 # Then start all services
 make start
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily private whiteboard backup
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
