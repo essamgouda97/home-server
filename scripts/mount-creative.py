@@ -2,10 +2,16 @@
 """Mount Creative using macOS NetFS and a Keychain password kept in memory."""
 import ctypes as c
 import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--share", choices=["Creative", "LifeDashboard"], default="Creative")
+share = parser.parse_args().share
+mount_path = "/Volumes/" + share
 import subprocess
 
-if os.path.ismount('/Volumes/Creative'):
-    print('Creative is already mounted at /Volumes/Creative.')
+if os.path.ismount(mount_path):
+    print(f'{share} is already mounted at {mount_path}.')
     raise SystemExit(0)
 r = subprocess.run(['security', 'find-internet-password', '-a', 'egouda',
                     '-s', 'home-server.lan', '-w'], capture_output=True, text=True)
@@ -32,7 +38,7 @@ def string(value):
     owned.append(result)
     return result
 try:
-    url = cf.CFURLCreateWithString(None, string('smb://home-server.lan/Creative'), None)
+    url = cf.CFURLCreateWithString(None, string('smb://home-server.lan/'+share), None)
     owned.append(url)
     key_callbacks = c.addressof((c.c_byte * 48).in_dll(cf, 'kCFTypeDictionaryKeyCallBacks'))
     value_callbacks = c.addressof((c.c_byte * 40).in_dll(cf, 'kCFTypeDictionaryValueCallBacks'))
@@ -43,9 +49,9 @@ try:
     result = net.NetFSMountURLSync(url, None, string('egouda'), string(password), options, None, c.byref(mounts))
     if mounts.value:
         owned.append(mounts.value)
-    if result or not os.path.ismount('/Volumes/Creative'):
+    if result or not os.path.ismount(mount_path):
         raise SystemExit(f'Creative mount failed (macOS status {result}); check Tailscale, DNS and credentials.')
-    print('Creative mounted in Finder at /Volumes/Creative.')
+    print(f'{share} mounted in Finder at {mount_path}.')
 finally:
     for obj in reversed(owned):
         cf.CFRelease(obj)

@@ -1,5 +1,7 @@
 # Home Server — Media, Creative Storage, and Smart Home
 
+Life Dashboard deployment and shared documents: [setup and operations](LIFE_DASHBOARD.md).
+
 A Docker Compose home server for media, private creative storage, Home Assistant,
 and project work with Codex. The historical OpenClaw/Servo agent is disabled.
 

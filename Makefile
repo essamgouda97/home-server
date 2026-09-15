@@ -682,7 +682,20 @@ urls: ## Show service URLs usable from the LAN
 	@echo "Creative Finder drive: smb://home-server.lan/Creative"
 	@echo "Home Assistant: http://assistant.lan"
 
-.PHONY: creative-start creative-mount creative-backup-mac home-config-check home-proxies
+.PHONY: life-start life-mount life-backup creative-start creative-mount creative-backup-mac home-config-check home-proxies
+life-start: ## Build and start the private Life Dashboard checkout
+	bash scripts/prepare-life-dashboard.sh
+	docker compose --env-file server.conf --env-file .env build life-dashboard
+	docker compose --env-file server.conf --env-file .env up -d life-dashboard life-dashboard-sync life-dashboard-health
+	python3 scripts/configure-life-dashboard.py
+	docker compose --env-file server.conf --env-file .env up -d samba filebrowser
+
+life-mount: ## Mount LifeDashboard/docs in Finder
+	python3 scripts/mount-creative.py --share LifeDashboard
+
+life-backup: ## Snapshot private Life Dashboard state on the server
+	python3 scripts/backup-life-dashboard.py
+
 creative-start: ## Start storage and Home Assistant after documented host/credential setup
 	set -eu
 	python3 scripts/prepare-codex-home.py

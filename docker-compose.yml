@@ -1,5 +1,88 @@
 services:
 
+  # Source is the private essamgouda97/life-dashboard repository, cloned over SSH.
+  life-dashboard:
+    image: home-server/life-dashboard:local
+    build:
+      context: ${LIFE_DASHBOARD_REPO:-../personal-finances}
+    container_name: life-dashboard
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      LIFE_DASHBOARD_SERVER: "1"
+      LIFE_DASHBOARD_ORIGINS: http://life.lan
+      CONTENT_STUDIO_OTIO_PYTHON: /opt/life-python/bin/python
+      FITBIT_AIR_STATE_PATH: /app/personal-finances/data/bridge/fitbit-live.json
+      CODEX_HOME: /home/node/.codex
+      LIFE_MAC_BRIDGE_SOCKET: /bridge/resolve.sock
+      TZ: ${TZ:-America/Edmonton}
+    ports: ["127.0.0.1:3030:3000"]
+    volumes:
+      - ${LIFE_DASHBOARD_DATA}/docs:/app/personal-finances/docs
+      - ${LIFE_DASHBOARD_DATA}/data:/app/personal-finances/data
+      - ${LIFE_DASHBOARD_DATA}/generated:/app/personal-finances/apps/web/public/generated
+      - ${LIFE_DASHBOARD_REPO}/config:/app/personal-finances/config
+      - ${LIFE_DASHBOARD_DATA}/codex:/home/node/.codex
+      - ${LIFE_DASHBOARD_DATA}/bridge:/bridge
+      - ${CREATIVE_ROOT}:/Volumes/Creative
+    networks: [proxy]
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 3g
+    cpus: 3
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/data-version').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  life-dashboard-sync:
+    image: home-server/life-dashboard:local
+    container_name: life-dashboard-sync
+    restart: unless-stopped
+    user: "1000:1000"
+    command: [python3, /app/personal-finances/scripts/watch_docs.py]
+    network_mode: none
+    volumes:
+      - ${LIFE_DASHBOARD_DATA}/docs:/app/personal-finances/docs:ro
+      - ${LIFE_DASHBOARD_DATA}/data:/app/personal-finances/data
+      - ${LIFE_DASHBOARD_DATA}/generated:/app/personal-finances/apps/web/public/generated
+      - ${LIFE_DASHBOARD_REPO}/config:/app/personal-finances/config:ro
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 3g
+    cpus: 2
+    healthcheck:
+      test: [CMD, python3, -c, "import os,time; p='/app/personal-finances/data/document-sync-status.json'; assert time.time()-os.stat(p).st_mtime<1800"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  life-dashboard-health:
+    image: home-server/life-dashboard:local
+    container_name: life-dashboard-health
+    restart: unless-stopped
+    user: "1000:1000"
+    command: [python3, /app/personal-finances/scripts/watch_health.py]
+    volumes:
+      - ${LIFE_DASHBOARD_DATA}/data:/app/personal-finances/data
+      - ${LIFE_DASHBOARD_REPO}/config:/app/personal-finances/config:ro
+      - ${HOME_SERVER_SECRETS_DIR}/life-dashboard-health:/run/secrets/health
+    networks: [assistant]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 2g
+    cpus: 1
+    healthcheck:
+      test: [CMD, python3, -c, "import os,time; assert time.time()-os.stat('/app/personal-finances/data/health-worker-heartbeat').st_mtime<7200"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 7200s
+
   # ─── CREATIVE STORAGE AND SMART HOME ────────────────
   creative-init:
     image: home-server/samba:local
@@ -28,6 +111,7 @@ services:
     ports:
       - "${SERVER_IP:-10.0.0.182}:445:445"
     volumes:
+      - ${LIFE_DASHBOARD_DATA}/docs:/shares/LifeDashboard/docs
       - type: bind
         source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}
         target: /shares/Creative
@@ -56,6 +140,7 @@ services:
     ports:
       - "${SERVER_IP:-10.0.0.182}:8082:8080"
     volumes:
+      - ${LIFE_DASHBOARD_DATA}/docs:/srv/LifeDashboard/docs
       - type: bind
         source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}
         target: /srv/Creative

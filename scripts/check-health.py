@@ -15,6 +15,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 SERVICES = {
+    "life": (None, "/", {401}),
     "files": (8082, "/", {200}),
     "assistant": (8123, "/", {200, 302}),
     "home": (3000, "/", {200, 302, 307}),
@@ -41,10 +42,10 @@ def http_check(item, host):
     name, (port, path, expected) = item
     result = []
     opener = urllib.request.build_opener(NoRedirect)
-    for label, url, headers in [
-        (f"{name}: direct", f"http://{host}:{port}{path}", {}),
-        (f"{name}: proxy", f"http://{host}{path}", {"Host": f"{name}.lan"}),
-    ]:
+    checks = [(f"{name}: proxy", f"http://{host}{path}", {"Host": f"{name}.lan"})]
+    if port is not None:
+        checks.insert(0, (f"{name}: direct", f"http://{host}:{port}{path}", {}))
+    for label, url, headers in checks:
         try:
             try:
                 with opener.open(urllib.request.Request(url, headers=headers), timeout=8) as response:

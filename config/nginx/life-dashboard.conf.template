@@ -1,0 +1,32 @@
+map "$request_method:$http_origin" $life_dashboard_reject_origin {
+    default 1;
+    ~^(GET|HEAD|OPTIONS): 0;
+    "POST:http://life.lan" 0;
+    "PUT:http://life.lan" 0;
+    "PATCH:http://life.lan" 0;
+    "DELETE:http://life.lan" 0;
+}
+server {
+    listen 80;
+    server_name life.lan;
+    auth_basic "Life Dashboard";
+    auth_basic_user_file /data/nginx/custom/home-server/life-dashboard.htpasswd;
+    client_max_body_size 32m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    if ($life_dashboard_reject_origin) { return 403; }
+    location / {
+        resolver 127.0.0.11 valid=30s;
+        set $life_backend http://life-dashboard:3000;
+        proxy_pass $life_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Authorization "";
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+}
