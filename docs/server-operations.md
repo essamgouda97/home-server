@@ -1,5 +1,26 @@
 # Home server operations
 
+## Current access and security — September 16, 2026
+
+Use `https://home.egouda.xyz` and the HTTPS app links in Homarr. All 35 registered
+browser apps now use the shared gateway at `https://auth.home.egouda.xyz`; choose
+**Home Server — auth** in 1Password. Some apps retain a separate native form until
+a supported SSO adapter is configured. See [authentication](authentication.md),
+[security hardening](security-hardening.md), [metrics](monitoring.md) and
+[service registration](service-registration.md) for current deployment details.
+
+The older inventory and verification entries below are historical. Web backend
+ports are now loopback-only except the deliberately preserved Jellyfin and Home
+Assistant native-client endpoints. Native Jellyfin clients can use
+`http://10.0.0.182:8096` over LAN/Tailscale; the former direct Tailscale-IP binding
+is no longer present. DNS-only household domain records work with ordinary router
+DNS; changing household DHCP is not necessary for these clean HTTPS URLs.
+
+Encrypted configuration backups now exist on the Mac, with a tested restore.
+A separate small central-auth snapshot also passed restore verification; full
+scheduled backups need more Mac free space. These do not back up the media library.
+
+
 Last inspected: 2026-09-14. Host: Ubuntu 22.04.5 LTS, Intel i5-8600K (6 cores),
 16 GB RAM, GTX 1070 (8 GB). Media/config data is under `/mnt/server` on a mergerfs
 pool spanning SSD and HDD. The pool has approximately 893 GB available; the HDD
