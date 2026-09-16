@@ -12,7 +12,8 @@ import urllib.request
 
 def main():
     os.umask(0o077)
-    password=(Path.home()/'.config/home-server/secrets/creative_password').read_text().strip()
+    passwords=json.loads((Path.home()/'.config/home-server/secrets/pending-service-passwords.json').read_text())
+    password=passwords['torrents']
     settings=json.loads(Path('/mnt/server/jellyseerr/config/settings.json').read_text())
     backup=Path.home()/'.local/state/home-server-maintenance/download-credentials'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup.mkdir(parents=True)
@@ -36,7 +37,9 @@ def main():
     def qlogin(username,secret):
         opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         req=urllib.request.Request(qbase+'/api/v2/auth/login',data=urllib.parse.urlencode({'username':username,'password':secret}).encode(),headers={'Referer':qbase+'/'})
-        with opener.open(req,timeout=15) as response: assert response.read()==b'Ok.','qBittorrent login failed'
+        with opener.open(req,timeout=15) as response:
+            body=response.read()
+            assert (response.status==204 and not body) or body==b'Ok.','qBittorrent login failed'
         return opener
     q=qlogin(old['username'],old['password'])
     prefs={'web_ui_username':'egouda','web_ui_password':password,'bypass_local_auth':False,'bypass_auth_subnet_whitelist_enabled':False}
@@ -55,10 +58,14 @@ def main():
             arr(name,'/downloadclient/'+str(client['id']),client,'PUT')
             arr(name,'/downloadclient/test',client,'POST')
         host=arr(name,'/config/host')
-        host.update({'username':'egouda','password':password,'passwordConfirmation':password,
+        host.update({'username':'egouda','password':passwords[name],'passwordConfirmation':passwords[name],
                      'authenticationMethod':'forms','authenticationRequired':'enabled'})
         arr(name,'/config/host',host,'PUT')
         print(name+' owner login aligned; qBittorrent connection test passed.')
+    active=Path.home()/'.config/home-server/secrets/service-passwords.json'
+    saved=json.loads(active.read_text()) if active.exists() else {}
+    saved.update({k:passwords[k] for k in ['torrents','sonarr','radarr']})
+    active.write_text(json.dumps(saved));active.chmod(0o600)
     print('Private recovery snapshot: '+str(backup))
 
 if __name__=='__main__':main()

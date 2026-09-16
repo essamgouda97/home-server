@@ -1,0 +1,33 @@
+groups:
+  - name: home-server
+    rules:
+      - alert: DiskSpaceLow
+        expr: home_filesystem_available_bytes / home_filesystem_size_bytes < 0.10
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: 'Less than 10% disk space remains on {{ $labels.mountpoint }}'}
+      - alert: ContainerDown
+        expr: home_container_running == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations: {summary: '{{ $labels.name }} is stopped'}
+      - alert: ContainerUnhealthy
+        expr: home_container_healthy == 0
+        for: 3m
+        labels: {severity: warning}
+        annotations: {summary: '{{ $labels.name }} failed its health check'}
+      - alert: ServiceUnavailable
+        expr: home_service_up == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations: {summary: '{{ $labels.service }} is unavailable'}
+      - alert: MetricsCollectorStale
+        expr: time() - home_metrics_collected_seconds > 180
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'The host metrics collector stopped updating'}
+      - alert: MemoryPressure
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: 'Less than 10% host memory is available'}

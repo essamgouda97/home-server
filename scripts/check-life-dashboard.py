@@ -9,8 +9,7 @@ import subprocess
 import urllib.error
 import urllib.request
 
-password=subprocess.run(['security','find-internet-password','-a','egouda','-s','files.lan','-w'],
-    capture_output=True,text=True,check=True).stdout.rstrip('\n')
+password=subprocess.run(['ssh','home-server',"cd ~/workspace/home-server && python3 -c \"import sys;sys.path.insert(0,'scripts');from service_credentials import service_password;print(service_password('life'),end='')\""],capture_output=True,text=True,check=True).stdout
 auth='Basic '+base64.b64encode(('egouda:'+password).encode()).decode()
 del password
 def request(path, *, authenticated=True, data=None, origin=None):

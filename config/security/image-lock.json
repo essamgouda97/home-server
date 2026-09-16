@@ -1,0 +1,74 @@
+{
+  "dnsmasq": {
+    "old": "jpillora/dnsmasq",
+    "pin": "jpillora/dnsmasq@sha256:98b69ad825942089fb7c4b9153e3c5af0205eda3a103c691e30b1a13fd912830"
+  },
+  "flaresolverr": {
+    "old": "ghcr.io/flaresolverr/flaresolverr:latest",
+    "pin": "ghcr.io/flaresolverr/flaresolverr@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767"
+  },
+  "homarr": {
+    "old": "ghcr.io/homarr-labs/homarr:latest",
+    "pin": "ghcr.io/homarr-labs/homarr@sha256:1f5b892aeef4ad0a4907f075777bbd0ce7120f4cdc53b9f3f028519250421aed"
+  },
+  "jellyfin": {
+    "old": "ghcr.io/linuxserver/jellyfin:latest",
+    "pin": "ghcr.io/linuxserver/jellyfin@sha256:4ee07757abcaa0b74fbc74179392311dc2874c03b0bef04bc2d79e9e1a875793"
+  },
+  "jellyfin-vue": {
+    "old": "jellyfin/jellyfin-vue:unstable",
+    "pin": "jellyfin/jellyfin-vue@sha256:73dbf74dcf2d9d17f71070658caf48404d7d981268da982dad65c141c48b9a46"
+  },
+  "jellyseerr": {
+    "old": "fallenbagel/jellyseerr:latest",
+    "pin": "fallenbagel/jellyseerr@sha256:4538137bc5af902dece165f2bf73776d9cf4eafb6dd714670724af8f3eb77764"
+  },
+  "npm": {
+    "old": "jc21/nginx-proxy-manager:latest",
+    "pin": "jc21/nginx-proxy-manager@sha256:52b2c59994f3d36acfcf70a1626f29734df0ed8c71bacc0269f78b6f939858bb"
+  },
+  "nzbget": {
+    "old": "ghcr.io/linuxserver/nzbget",
+    "pin": "ghcr.io/linuxserver/nzbget@sha256:3709b8e5c5a6a23cfc25b9de0877be164156392708dc95250291e6d9e571a342"
+  },
+  "portainer": {
+    "old": "portainer/portainer-ce",
+    "pin": "portainer/portainer-ce@sha256:511f3f06c96fe3b993ebeaafde311c1959cae73a7ef825dba6397d51b450dffa"
+  },
+  "prowlarr": {
+    "old": "lscr.io/linuxserver/prowlarr:latest",
+    "pin": "lscr.io/linuxserver/prowlarr@sha256:c7502a75b021d964481c129c84590b9cbc40f83aadd4e553f173871bc0deaa3c"
+  },
+  "qbittorrent": {
+    "old": "linuxserver/qbittorrent",
+    "pin": "linuxserver/qbittorrent@sha256:2be038f3421f60f62e8e4bf201f66f385b68e4fbc9ed3ab79051069ea22e2650"
+  },
+  "radarr": {
+    "old": "linuxserver/radarr",
+    "pin": "linuxserver/radarr@sha256:fe051413dfd91b383ba04910552e83fb0306895fefee275c48dafe7bb90807dc"
+  },
+  "recyclarr": {
+    "old": "ghcr.io/recyclarr/recyclarr:latest",
+    "pin": "ghcr.io/recyclarr/recyclarr@sha256:791bdc0d2a35b0f24b89a0b14159591269ef070f19fcccfc5fb518a863141373"
+  },
+  "sonarr": {
+    "old": "linuxserver/sonarr",
+    "pin": "linuxserver/sonarr@sha256:82172b363f9eddc02aca544f880a044f2ceb9aaf190bc87e4454e2f705eb91d0"
+  },
+  "speedtest-tracker": {
+    "old": "lscr.io/linuxserver/speedtest-tracker:latest",
+    "pin": "lscr.io/linuxserver/speedtest-tracker@sha256:ba417240066461b2d15581454aeea2955675e5255d0d9aada187e9caa3ea4897"
+  },
+  "uptime-kuma": {
+    "old": "louislam/uptime-kuma:1",
+    "pin": "louislam/uptime-kuma@sha256:3d632903e6af34139a37f18055c4f1bfd9b7205ae1138f1e5e8940ddc1d176f9"
+  },
+  "vpn": {
+    "old": "dperson/openvpn-client",
+    "pin": "dperson/openvpn-client@sha256:d174047b57d51734143325ad7395210643025e6516ba60a937e9319dbb462293"
+  },
+  "watchtower": {
+    "old": "containrrr/watchtower",
+    "pin": "containrrr/watchtower@sha256:6dd50763bbd632a83cb154d5451700530d1e44200b268a4e9488fefdfcf2b038"
+  }
+}

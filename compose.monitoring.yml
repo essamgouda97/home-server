@@ -1,0 +1,64 @@
+name: home-metrics
+services:
+  grafana:
+    image: grafana/grafana:13.2.1@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283
+    container_name: home-grafana
+    restart: unless-stopped
+    user: '472:472'
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 768m
+    environment:
+      GF_SERVER_ROOT_URL: https://metrics.home.egouda.xyz
+      GF_SECURITY_ADMIN_USER: egouda
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_password
+      GF_SECURITY_COOKIE_SECURE: 'true'
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/home-server.json
+    volumes:
+      - /srv/mergerfs/ssd/monitoring/grafana:/var/lib/grafana
+      - ./config/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - /home/egouda/.config/home-server/secrets/grafana_password:/run/secrets/grafana_password:ro
+    networks: [metrics, proxy]
+  prometheus:
+    image: prom/prometheus:v3.14.0@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
+    container_name: home-prometheus
+    restart: unless-stopped
+    user: '65534:65534'
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 768m
+    command: ['--config.file=/etc/prometheus/prometheus.yml', '--storage.tsdb.path=/prometheus', '--storage.tsdb.retention.time=30d', '--storage.tsdb.retention.size=2GB']
+    volumes:
+      - ./config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - /srv/mergerfs/ssd/monitoring/prometheus:/prometheus
+    networks: [metrics]
+  node-exporter:
+    image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+    container_name: home-node-exporter
+    restart: unless-stopped
+    user: '65534:65534'
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 128m
+    command: ['--path.procfs=/host/proc', '--path.sysfs=/host/sys', '--path.rootfs=/host/root', '--collector.textfile.directory=/textfile', '--no-collector.netdev', '--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker|snap)($$|/)']
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+      - /home/egouda/.local/state/home-server-metrics:/textfile:ro
+    networks: [metrics]
+networks:
+  metrics:
+    internal: true
+  proxy:
+    external: true
+    name: home-server_proxy

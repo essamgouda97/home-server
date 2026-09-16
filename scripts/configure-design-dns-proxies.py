@@ -2,6 +2,7 @@
 """Install private whiteboard and Pi-hole routes; validate before graceful reload."""
 from datetime import datetime, timezone
 from pathlib import Path
+from service_credentials import service_password
 import os
 import shutil
 import subprocess
@@ -35,7 +36,7 @@ server {
     listen 80;
     server_name draw.lan;
     auth_basic "Private whiteboard";
-    auth_basic_user_file /data/nginx/custom/home-server/ods.htpasswd;
+    auth_basic_user_file /data/nginx/custom/home-server/draw.htpasswd;
     if ($draw_reject_origin) { return 403; }
     if ($draw_reject_websocket) { return 403; }
     client_max_body_size 20m;
@@ -77,6 +78,8 @@ def write(path, data):
     subprocess.run(['docker', 'exec', '-i', 'npm', 'sh', '-c', command], input=data, check=True)
 
 try:
+    hashed = subprocess.run(['openssl','passwd','-6','-stdin'],input=service_password('draw').encode()+b'\n',capture_output=True,check=True).stdout.strip()
+    write(routes/'draw.htpasswd', b'egouda:'+hashed+b'\n')
     write(target, text.encode())
     include = b'include /data/nginx/custom/home-server/*.conf;'
     if include not in (previous[hook] or b''):

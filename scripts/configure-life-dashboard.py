@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Provision private dashboard auth and reconcile its NPM route on the server."""
 from pathlib import Path
+from service_credentials import service_password
 import shutil
 import subprocess
 
@@ -15,7 +16,7 @@ auth.mkdir(mode=0o700, exist_ok=True)
 if not (auth/'auth.json').exists():
     shutil.copyfile(Path.home()/'.codex/auth.json', auth/'auth.json')
 (auth/'auth.json').chmod(0o600)
-password = (Path(settings['HOME_SERVER_SECRETS_DIR'])/'creative_password').read_bytes().rstrip(b'\n')
+password = service_password('life').encode()
 hashed = subprocess.run(['openssl','passwd','-6','-stdin'],input=password+b'\n',capture_output=True,check=True).stdout.strip()
 del password
 base = '/data/nginx/custom/home-server/'

@@ -16,7 +16,7 @@ def main():
     os.umask(0o077)
     root=Path.home()/'.local/state/home-server-maintenance/jellyfin-password'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root.mkdir(parents=True)
-    password=(Path.home()/'.config/home-server/secrets/creative_password').read_text().strip()
+    password=json.loads((Path.home()/'.config/home-server/secrets/pending-service-passwords.json').read_text())['jellyfin']
     settings=json.loads(Path('/mnt/server/jellyseerr/config/settings.json').read_text())
     key=settings['jellyfin']['apiKey']
     def api(path,data=None):
@@ -60,6 +60,10 @@ process.stdout.write(encrypted.toString('hex')+'.'+iv.toString('hex'));'''
         for ident in targets:
             db.execute('UPDATE integrationSecret SET value=?,updated_at=? WHERE integration_id=? AND kind=?',
                        (encrypted,int(datetime.now(timezone.utc).timestamp()*1000),ident,'password'))
+    active=Path.home()/'.config/home-server/secrets/service-passwords.json'
+    saved=json.loads(active.read_text()) if active.exists() else {}
+    saved['jellyfin']=password
+    active.write_text(json.dumps(saved));active.chmod(0o600)
     print('Jellyfin egouda password aligned; Homarr integration updated. Backups: '+str(root))
 
 if __name__=='__main__': main()

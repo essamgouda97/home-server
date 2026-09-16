@@ -1,0 +1,803 @@
+{
+  "version": 1,
+  "services": [
+    {
+      "title": "Jellyfin",
+      "url": "https://jellyfin.home.egouda.xyz",
+      "probe_url": "http://jellyfin:8096/health",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/jellyfin.svg",
+      "id": "jellyfin",
+      "category": "Applications",
+      "credential": "jellyfin",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "household",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Jellyfin Vue",
+      "url": "https://vue.home.egouda.xyz",
+      "probe_url": "http://jellyfin-vue:80",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/jellyfin.svg",
+      "id": "vue",
+      "category": "Applications",
+      "credential": "jellyfin",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "household",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Jellyseerr",
+      "url": "https://requests.home.egouda.xyz",
+      "probe_url": "http://jellyseerr:5055",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/jellyseerr.svg",
+      "id": "requests",
+      "category": "Applications",
+      "credential": "jellyfin",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "household",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Sonarr",
+      "url": "https://sonarr.home.egouda.xyz",
+      "probe_url": "http://sonarr:8989/ping",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/sonarr.svg",
+      "id": "sonarr",
+      "category": "Applications",
+      "credential": "sonarr",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Radarr",
+      "url": "https://radarr.home.egouda.xyz",
+      "probe_url": "http://radarr:7878/ping",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/radarr.svg",
+      "id": "radarr",
+      "category": "Applications",
+      "credential": "radarr",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "qBittorrent",
+      "url": "https://torrents.home.egouda.xyz",
+      "probe_url": "http://vpn-gateway:15080",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/qbittorrent.svg",
+      "id": "torrents",
+      "category": "Applications",
+      "credential": "torrents",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Prowlarr",
+      "url": "https://prowlarr.home.egouda.xyz",
+      "probe_url": "http://prowlarr:9696/ping",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/prowlarr.svg",
+      "id": "prowlarr",
+      "category": "Applications",
+      "credential": "prowlarr",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Uptime Kuma",
+      "url": "https://status.home.egouda.xyz",
+      "probe_url": "http://uptime-kuma:3001",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/uptime-kuma.svg",
+      "id": "status",
+      "category": "Applications",
+      "credential": "status",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Portainer",
+      "url": "https://portainer.home.egouda.xyz",
+      "probe_url": "http://portainer:9000/api/status",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/portainer.svg",
+      "id": "portainer",
+      "category": "Applications",
+      "credential": "portainer",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "NZBGet",
+      "url": "https://nzbget.home.egouda.xyz",
+      "probe_url": "http://nzbget:6789",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/nzbget.svg",
+      "id": "nzbget",
+      "category": "Applications",
+      "credential": "nzbget",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Speedtest Tracker",
+      "url": "https://speedtest.home.egouda.xyz",
+      "probe_url": "http://speedtest-tracker:80",
+      "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/speedtest-tracker.png",
+      "id": "speedtest",
+      "category": "Applications",
+      "credential": "speedtest",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "ODS Dashboard",
+      "url": "https://ods.home.egouda.xyz",
+      "probe_url": "http://ods-dashboard:3001",
+      "icon": "http://chat.lan/static/favicon.png",
+      "id": "ods",
+      "category": "Applications",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "title": "ODS Chat",
+      "url": "https://chat.home.egouda.xyz",
+      "probe_url": "http://ods-webui:8080",
+      "icon": "http://chat.lan/static/favicon.png",
+      "id": "chat",
+      "category": "Applications",
+      "credential": "chat",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Local Drive",
+      "url": "https://files.home.egouda.xyz",
+      "probe_url": "http://filebrowser:8080/health",
+      "icon": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2216%22%20fill%3D%22%2336354a%22/%3E%3Ctext%20x%3D%2240%22%20y%3D%2247%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2222%22%20fill%3D%22white%22%3EFiles%3C/text%3E%3C/svg%3E",
+      "id": "files",
+      "category": "Applications",
+      "credential": "files",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Footage Library",
+      "url": "https://ingest.home.egouda.xyz",
+      "probe_url": "http://footage-console:8080/health",
+      "icon": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2216%22%20fill%3D%22%2336354a%22/%3E%3Ctext%20x%3D%2240%22%20y%3D%2247%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2222%22%20fill%3D%22white%22%3EFilm%3C/text%3E%3C/svg%3E",
+      "id": "ingest",
+      "category": "Applications",
+      "credential": "ingest",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "title": "Home Assistant",
+      "url": "https://assistant.home.egouda.xyz",
+      "probe_url": "http://10.0.0.182:8123",
+      "icon": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2216%22%20fill%3D%22%2336354a%22/%3E%3Ctext%20x%3D%2240%22%20y%3D%2247%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2222%22%20fill%3D%22white%22%3EHA%3C/text%3E%3C/svg%3E",
+      "id": "assistant",
+      "category": "Applications",
+      "credential": "assistant",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "title": "Life Dashboard",
+      "url": "https://life.home.egouda.xyz",
+      "probe_url": "http://life-dashboard:3000",
+      "icon": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2216%22%20fill%3D%22%2336354a%22/%3E%3Ctext%20x%3D%2240%22%20y%3D%2247%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2222%22%20fill%3D%22white%22%3ELife%3C/text%3E%3C/svg%3E",
+      "id": "life",
+      "category": "Applications",
+      "credential": "life",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "title": "Private Whiteboard",
+      "url": "https://draw.home.egouda.xyz",
+      "probe_url": "http://excalidraw:3000/health",
+      "icon": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2216%22%20fill%3D%22%2336354a%22/%3E%3Ctext%20x%3D%2240%22%20y%3D%2247%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2222%22%20fill%3D%22white%22%3EDraw%3C/text%3E%3C/svg%3E",
+      "id": "draw",
+      "category": "Applications",
+      "credential": "draw",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "title": "Pi-hole DNS",
+      "url": "https://dns.home.egouda.xyz",
+      "probe_url": "http://pihole:80/admin/",
+      "icon": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2216%22%20fill%3D%22%2336354a%22/%3E%3Ctext%20x%3D%2240%22%20y%3D%2247%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2222%22%20fill%3D%22white%22%3EDNS%3C/text%3E%3C/svg%3E",
+      "id": "dns",
+      "category": "Applications",
+      "credential": "dns",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "id": "metrics",
+      "title": "Metrics",
+      "url": "https://metrics.home.egouda.xyz/",
+      "probe_url": "http://home-grafana:3000/api/health",
+      "icon": "https://metrics.home.egouda.xyz/public/img/grafana_icon.svg",
+      "category": "Administration",
+      "credential": "metrics",
+      "expected_status": [
+        200,
+        302
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "id": "ape-ods",
+      "title": "ODS \u00b7 Ape",
+      "url": "https://ape-ods.home.egouda.xyz/docs",
+      "probe_url": "http://ods-ape:7890/docs",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "embeddings-ods",
+      "title": "ODS \u00b7 Embeddings",
+      "url": "https://embeddings-ods.home.egouda.xyz/info",
+      "probe_url": "http://ods-embeddings:80/info",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "hermes-proxy-ods",
+      "title": "ODS \u00b7 Hermes Proxy",
+      "url": "https://hermes-proxy-ods.home.egouda.xyz/",
+      "probe_url": "http://ods-hermes-proxy:9120/",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "langfuse-ods",
+      "title": "ODS \u00b7 Langfuse",
+      "url": "https://langfuse-ods.home.egouda.xyz/",
+      "probe_url": "http://ods-langfuse-web:3000/",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": null,
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "id": "llama-server-ods",
+      "title": "ODS \u00b7 Llama Server",
+      "url": "https://llama-server-ods.home.egouda.xyz/",
+      "probe_url": "http://ods-llama-server:8080/",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "n8n-ods",
+      "title": "ODS \u00b7 N8N",
+      "url": "https://n8n-ods.home.egouda.xyz/",
+      "probe_url": "http://ods-n8n:5678/",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": null,
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "id": "perplexica-ods",
+      "title": "ODS \u00b7 Perplexica",
+      "url": "https://perplexica-ods.home.egouda.xyz/",
+      "probe_url": "http://ods-perplexica:3000/",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "privacy-shield-ods",
+      "title": "ODS \u00b7 Privacy Shield",
+      "url": "https://privacy-shield-ods.home.egouda.xyz/docs",
+      "probe_url": "http://ods-privacy-shield:8085/docs",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "qdrant-ods",
+      "title": "ODS \u00b7 Qdrant",
+      "url": "https://qdrant-ods.home.egouda.xyz/dashboard",
+      "probe_url": "http://ods-qdrant:6333/dashboard",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "searxng-ods",
+      "title": "ODS \u00b7 Searxng",
+      "url": "https://searxng-ods.home.egouda.xyz/",
+      "probe_url": "http://ods-searxng:8080/",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "token-spy-ods",
+      "title": "ODS \u00b7 Token Spy",
+      "url": "https://token-spy-ods.home.egouda.xyz/dashboard",
+      "probe_url": "http://ods-token-spy:8080/dashboard",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "tts-ods",
+      "title": "ODS \u00b7 Tts",
+      "url": "https://tts-ods.home.egouda.xyz/docs",
+      "probe_url": "http://ods-tts:8880/docs",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "whisper-ods",
+      "title": "ODS \u00b7 Whisper",
+      "url": "https://whisper-ods.home.egouda.xyz/docs",
+      "probe_url": "http://ods-whisper:8000/docs",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg",
+      "category": "Local AI",
+      "credential": "ods",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "gateway"
+      }
+    },
+    {
+      "id": "homarr",
+      "title": "Home Dashboard",
+      "url": "https://home.egouda.xyz",
+      "probe_url": "http://homarr:7575",
+      "credential": "homarr",
+      "category": "Applications",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/docker.svg",
+      "expected_status": [
+        200,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    },
+    {
+      "id": "coach",
+      "title": "Health Coach",
+      "url": "https://coach.home.egouda.xyz",
+      "probe_url": "http://health-coach:8099/health",
+      "credential": "coach",
+      "category": "Applications",
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/docker.svg",
+      "expected_status": [
+        200,
+        302,
+        303,
+        307,
+        308,
+        401
+      ],
+      "auth": {
+        "mode": "gateway",
+        "access": "owner",
+        "adapter": "native"
+      }
+    }
+  ]
+}

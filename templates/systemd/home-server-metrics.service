@@ -1,0 +1,7 @@
+[Unit]
+Description=Collect private home-server container and availability metrics
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/egouda/workspace/home-server/scripts/collect-home-metrics.py
+TimeoutStartSec=90

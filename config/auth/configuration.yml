@@ -1,0 +1,51 @@
+---
+theme: auto
+server:
+  address: tcp://:9091/
+log:
+  level: warn
+  format: json
+telemetry:
+  metrics:
+    enabled: false
+identity_validation:
+  reset_password:
+    jwt_lifespan: 5 minutes
+authentication_backend:
+  password_reset:
+    disable: true
+  password_change:
+    disable: true
+  file:
+    path: /private/users.yml
+    watch: true
+    password:
+      algorithm: argon2
+      argon2:
+        variant: argon2id
+        iterations: 3
+        memory: 65536
+        parallelism: 4
+access_control:
+  default_policy: deny
+  rules: [] # Generated from config/services.json before deployment.
+session:
+  name: home_session
+  same_site: lax
+  inactivity: 1 hour
+  expiration: 12 hours
+  remember_me: 7 days
+  cookies:
+    - domain: home.egouda.xyz
+      authelia_url: https://auth.home.egouda.xyz
+      default_redirection_url: https://home.egouda.xyz
+regulation:
+  max_retries: 5
+  find_time: 2 minutes
+  ban_time: 10 minutes
+storage:
+  local:
+    path: /state/db.sqlite3
+notifier:
+  filesystem:
+    filename: /state/notifications.txt

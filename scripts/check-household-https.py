@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only HTTPS, link, origin and WebSocket checks on the home server."""
 from pathlib import Path
+from service_credentials import service_password
 import base64
 import json
 import re
@@ -15,10 +16,12 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def main():
     context = ssl.create_default_context()
     opener = urllib.request.build_opener(NoRedirect,urllib.request.HTTPSHandler(context=context))
-    secret = (Path.home()/'.config/home-server/secrets/creative_password').read_text().strip()
+    secret = service_password('draw')
     auth = 'Basic '+base64.b64encode(('egouda:'+secret).encode()).decode()
     def get(host,path='/',authenticated=False,method='GET',origin=None):
-        headers = {'Authorization':auth} if authenticated else {}
+        name=host.split('.')[0]
+        specific_auth='Basic '+base64.b64encode(('egouda:'+service_password(name)).encode()).decode()
+        headers = {'Authorization':specific_auth} if authenticated else {}
         if origin: headers['Origin']=origin
         request = urllib.request.Request('https://'+host+path,headers=headers,method=method)
         try: return opener.open(request,timeout=20)

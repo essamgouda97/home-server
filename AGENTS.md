@@ -13,15 +13,28 @@ The owner prefers open-source, self-hosted services and DIY hardware by default.
 Keep new setup reproducible in this repository. The existing subscription-backed
 Codex assistant is an explicit choice; keep speech processing local.
 
-Before deploying or changing an owner-facing service, verify its `egouda` login
-uses the existing private household password from
-`~/.config/home-server/secrets/creative_password` on the server. Align mismatches
-through supported APIs, preserve backups, and update dependent integrations.
-Test an actual login through the final HTTPS address; HTTP 200 or an API-key
-health check is insufficient. Never print the password. Preserve individual
-family accounts (such as `mgouda`) and machine API keys; those are separate.
+Before deploying or changing an owner-facing service, use its individual password
+saved in the owner's authorized 1Password Employee (PERSONAL) vault, tagged
+`HomeServer`. The September 16 security request supersedes the earlier shared
+password policy. Do not realign migrated apps to `creative_password`.
+Server-side verification reads `~/.config/home-server/secrets/service-passwords.json`;
+legacy services still use `creative_password` until separately migrated.
+Preserve backups and update dependent integrations together. Test an actual login
+through the final HTTPS address, not only HTTP 200 or API-key health.
+Never print passwords. Preserve individual family accounts (such as `mgouda`).
 For qBittorrent/Sonarr/Radarr run `scripts/check-download-logins.py --local`
 before proxy deployment and without `--local` afterward.
+See `docs/security-hardening.md` for deployed protections and remaining work.
+Before credential work, read `docs/agents/credentials.md` and use `scripts/vault.py`
+with official 1Password desktop approval. Register every new browser app in
+`config/services.json`; follow `docs/service-registration.md` so Homarr and metrics
+stay aligned. `docs/monitoring.md` describes the metrics dashboard.
+Authentication is a shared platform concern: read `docs/authentication.md` before
+adding or changing any browser route. All new apps must declare gateway access in
+`config/services.json` (owner-only by default), use the shared compiler, and pass
+`check-auth.py` before publication. Preserve native-client authentication separately.
+The central gateway is currently prepared but awaiting 1Password authorization;
+do not claim it is deployed until the documented rollout and functional checks pass.
 
 ## Agent skills
 

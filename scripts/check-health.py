@@ -38,13 +38,23 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def http_check(item, host):
+PRIVATE_PORTS = {8082, 3000, 8097, 8989, 7878, 5055, 15080, 9696, 3001, 9000, 6789, 8765}
+
+
+def http_check(item, host, local=False):
     name, (port, path, expected) = item
     result = []
     opener = urllib.request.build_opener(NoRedirect)
     checks = [(f"{name}: proxy", f"http://{host}{path}", {"Host": f"{name}.lan"})]
-    if port is not None:
-        checks.insert(0, (f"{name}: direct", f"http://{host}:{port}{path}", {}))
+    if port in PRIVATE_PORTS and not local:
+        try:
+            with socket.create_connection((host, port), timeout=2):
+                result.append((False, f"{name}: private backend", "direct LAN port is exposed"))
+        except (OSError, TimeoutError):
+            result.append((True, f"{name}: private backend", "direct LAN port closed"))
+    elif port is not None:
+        direct_host = "127.0.0.1" if port in PRIVATE_PORTS else host
+        checks.insert(0, (f"{name}: direct", f"http://{direct_host}:{port}{path}", {}))
     for label, url, headers in checks:
         try:
             try:
@@ -99,7 +109,7 @@ def main():
         except OSError as error:
             report(False, "DNS", str(error))
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
-        for rows in pool.map(lambda item: http_check(item, args.host), SERVICES.items()):
+        for rows in pool.map(lambda item: http_check(item, args.host, args.local), SERVICES.items()):
             for row in rows:
                 report(*row)
     if args.local:

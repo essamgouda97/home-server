@@ -12,8 +12,11 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--local',action='store_true',help='Check direct services before deploying proxy changes')
     args=parser.parse_args()
-    password=(Path.home()/'.config/home-server/secrets/creative_password').read_text().strip()
-    for name,port in [('torrents',15080),('sonarr',8989),('radarr',7878)]:
+    secrets=Path.home()/'.config/home-server/secrets'
+    active=secrets/'service-passwords.json'
+    passwords=json.loads(active.read_text()) if active.exists() else {}
+    for name,port in [('torrents',15080),('sonarr',8989),('radarr',7878),('prowlarr',9696)]:
+        password=passwords.get(name) or (secrets/'creative_password').read_text().strip()
         base='http://127.0.0.1:'+str(port) if args.local else 'https://'+name+'.home.egouda.xyz'
         jar=http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
         is_q=name=='torrents'
@@ -24,7 +27,7 @@ def main():
         req=urllib.request.Request(base+path,data=urllib.parse.urlencode({'username':'egouda','password':password,'rememberMe':'false'}).encode(),headers={'Origin':base,'Referer':base+'/'})
         with opener.open(req,timeout=20) as response:
             body=response.read()
-            if is_q:assert body==b'Ok.','qBittorrent rejected the shared password'
+            if is_q:assert (response.status==204 and not body) or body==b'Ok.','qBittorrent login rejected'
         assert list(jar),'No authenticated session cookie: '+name
         endpoint='/api/v2/app/version' if is_q else '/'
         with opener.open(base+endpoint,timeout=20) as response:
@@ -34,6 +37,6 @@ def main():
                 assert not re.search(r'type=["\x27]password',response.read().decode())
         logout='/api/v2/auth/logout' if is_q else '/logout'
         with opener.open(urllib.request.Request(base+logout,data=b'' if is_q else None),timeout=20) as response:response.read()
-        print('PASS '+name+' egouda/shared-password login and authenticated access; logged out')
+        print('PASS '+name+' egouda login and authenticated access; logged out')
 
 if __name__=='__main__':main()

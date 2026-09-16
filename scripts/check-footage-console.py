@@ -4,6 +4,7 @@ import base64
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from service_credentials import service_password
 import urllib.error
 import urllib.request
 
@@ -19,7 +20,7 @@ except urllib.error.HTTPError as error:
     status=error.code;error.close()
     if status != 401: raise SystemExit('FAIL: expected a login challenge.')
 print('PASS: unauthenticated requests require login.')
-password=(Path(settings['HOME_SERVER_SECRETS_DIR'])/'creative_password').read_bytes().rstrip(b'\n')
+password=service_password('ingest').encode()
 headers['Authorization']='Basic '+base64.b64encode(b'egouda:'+password).decode()
 del password
 with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=10) as response:

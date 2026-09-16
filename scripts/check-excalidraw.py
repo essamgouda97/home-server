@@ -4,6 +4,7 @@ import argparse
 import base64
 import json
 from pathlib import Path
+from service_credentials import service_password
 import select
 import subprocess
 import time
@@ -14,12 +15,12 @@ def main():
     parser.add_argument('--seed', action='store_true')
     parser.add_argument('--fit', action='store_true', help='With --seed, fit the architecture board in its open browser')
     args = parser.parse_args()
-    password = (Path.home()/'.config/home-server/secrets/creative_password').read_text().strip()
+    password = service_password('draw')
     headers = {'Host':'draw.lan', 'Authorization':'Basic '+base64.b64encode(('egouda:'+password).encode()).decode()}
     def api(path, data=None, tenant=None):
         h = {**headers, 'Content-Type':'application/json', 'Origin':'http://draw.lan'}
         if tenant: h['X-Tenant-Id'] = tenant
-        request = urllib.request.Request('http://127.0.0.1'+path, headers=h, data=None if data is None else json.dumps(data).encode())
+        request = urllib.request.Request('http://10.0.0.182'+path, headers=h, data=None if data is None else json.dumps(data).encode())
         with urllib.request.urlopen(request, timeout=20) as response: return json.load(response)
     assert api('/health')['status']=='healthy'
     print('PASS authenticated whiteboard HTTP')
@@ -62,7 +63,7 @@ def main():
             if args.fit:
                 result=rpc(5,'tools/call',{'name':'set_viewport','arguments':{'scrollToContent':True}})
                 print('PASS live MCP viewport command')
-        with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1/',headers=headers),timeout=10) as response:
+        with urllib.request.urlopen(urllib.request.Request('http://10.0.0.182/',headers=headers),timeout=10) as response:
             policy=response.headers.get('Content-Security-Policy','')
             assert "connect-src 'self' ws://draw.lan" in policy
         print('PASS browser connection policy restricts external requests')

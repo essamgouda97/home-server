@@ -53,6 +53,8 @@ def main():
         custom_vars = set(re.findall(r'\bmap\s+[^\n]+\s+\$(\w+)\s*\{',text))
         for variable in sorted(custom_vars,key=len,reverse=True):
             text = re.sub(r'\$'+variable+r'\b','$household_'+str(index)+'_'+variable,text)
+        text = re.sub(r'\n\s*# home-auth-redirect\n\s*return 308 [^;]+;', '', text)
+        text = re.sub(r'\n\s*# home-auth-native-client\n\s*auth_request off;', '', text)
         text = translate(text)
         # These existing UIs advertise legacy links in HTML/API responses. Adapt
         # only their HTTPS presentation, preserving the .lan clients and data.
@@ -73,7 +75,11 @@ def main():
     assert DOMAIN in hosts and 'draw.'+DOMAIN in hosts
     redirects = 'server {\n listen 80;\n server_name ' + ' '.join(sorted(hosts)) + ';\n return 308 https://$host$request_uri;\n}\n'
     try:
-        write(('\n'.join(rendered)+'\n'+redirects).encode())
+        output='\n'.join(rendered)+'\n'+redirects
+        if (ROOT/'custom/home-auth/location.conf').exists():
+            from auth_policy import render
+            output,_=render(output)
+        write(output.encode())
         subprocess.run(['docker','exec','npm','nginx','-t'],capture_output=True,check=True)
     except Exception:
         write(original)

@@ -1,0 +1,45 @@
+{
+  "grants": [
+    {
+      "src": [
+        "essamgouda97@github"
+      ],
+      "dst": [
+        "*"
+      ],
+      "ip": [
+        "*"
+      ]
+    }
+  ],
+  "ssh": [
+    {
+      "action": "check",
+      "src": [
+        "essamgouda97@github"
+      ],
+      "dst": [
+        "autogroup:self"
+      ],
+      "users": [
+        "autogroup:nonroot"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "src": "essamgouda97@github",
+      "accept": [
+        "10.0.0.182:443",
+        "100.120.82.22:22"
+      ]
+    },
+    {
+      "src": "100.101.102.103",
+      "deny": [
+        "100.120.82.22:22",
+        "10.0.0.182:443"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run on the server: provision private Codex auth and authenticated ingest.lan."""
 from pathlib import Path
+from service_credentials import service_password
 import shutil
 import subprocess
 
@@ -15,7 +16,7 @@ if not (auth / 'auth.json').exists():
     shutil.copyfile(Path.home() / '.codex/auth.json', auth / 'auth.json')
 (auth / 'auth.json').chmod(0o600)
 # Existing login is reused without displaying or persisting the plaintext password.
-password = (Path(settings['HOME_SERVER_SECRETS_DIR']) / 'creative_password').read_bytes().rstrip(b'\n')
+password = service_password('ingest').encode()
 hashed = subprocess.run(['openssl', 'passwd', '-6', '-stdin'], input=password+b'\n', capture_output=True, check=True).stdout.strip()
 del password
 base = '/data/nginx/custom/home-server/'

@@ -1,0 +1,26 @@
+name: home-auth
+services:
+  authelia:
+    image: authelia/authelia:4.39.27@sha256:40005803cd4e2eaeea4418517e9e9c7f515b55b31071a02829341ca2e50ca7c0
+    container_name: home-authelia
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    environment:
+      TZ: America/Edmonton
+      AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE: /private/jwt_secret
+      AUTHELIA_SESSION_SECRET_FILE: /private/session_secret
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /private/storage_key
+    volumes:
+      - ${HOME_SERVER_SECRETS_DIR}/authelia:/private:ro
+      - ${HOME_SERVER_SECRETS_DIR}/authelia/configuration.yml:/config/configuration.yml:ro
+      - /srv/mergerfs/ssd/authelia:/state
+    tmpfs: [/tmp]
+    networks: [proxy]
+networks:
+  proxy:
+    external: true
+    name: home-server_proxy

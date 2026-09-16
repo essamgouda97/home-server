@@ -1,0 +1,85 @@
+{
+  "account": "colab-software.1password.com",
+  "vault": "Employee",
+  "tag": "HomeServer",
+  "items": {
+    "jellyfin": {
+      "title": "Home Server \u2014 jellyfin",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/w4jazwovotbw73lzeg5zskkb2q/password",
+      "urls": [
+        "https://jellyfin.home.egouda.xyz",
+        "https://requests.home.egouda.xyz"
+      ]
+    },
+    "homarr": {
+      "title": "Home Server \u2014 homarr",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/jlwbiv4qxcbezilyzcfybkqo4a/password",
+      "urls": [
+        "https://home.egouda.xyz"
+      ]
+    },
+    "torrents": {
+      "title": "Home Server \u2014 torrents",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/kpf7jpbfpgbrgrpxlr3bbayxsy/password",
+      "urls": [
+        "https://torrents.home.egouda.xyz"
+      ]
+    },
+    "sonarr": {
+      "title": "Home Server \u2014 sonarr",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/2a6jpfs2qmreqsmue6elcsfz6i/password",
+      "urls": [
+        "https://sonarr.home.egouda.xyz"
+      ]
+    },
+    "radarr": {
+      "title": "Home Server \u2014 radarr",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/w43td4zloq4kmadsyk5oqabzm4/password",
+      "urls": [
+        "https://radarr.home.egouda.xyz"
+      ]
+    },
+    "prowlarr": {
+      "title": "Home Server \u2014 prowlarr",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/4dogwuaza7hfyjwl7l2nfzvqu4/password",
+      "urls": [
+        "https://prowlarr.home.egouda.xyz"
+      ]
+    },
+    "draw": {
+      "title": "Home Server \u2014 draw",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/zolhkztdxoa3cai47kmoxjt5za/password",
+      "urls": [
+        "https://draw.home.egouda.xyz"
+      ]
+    },
+    "life": {
+      "title": "Home Server \u2014 life",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/ks7s3yrytt3ankowgqlnbsgphy/password",
+      "urls": [
+        "https://life.home.egouda.xyz"
+      ]
+    },
+    "ingest": {
+      "title": "Home Server \u2014 ingest",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/gwnjoqkxnlkcwwxnedknz2xqe4/password",
+      "urls": [
+        "https://ingest.home.egouda.xyz"
+      ]
+    },
+    "ods": {
+      "title": "Home Server \u2014 ods",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/jmc6pdanhgzycppzuer6n7aqwq/password",
+      "urls": [
+        "https://ods.home.egouda.xyz"
+      ]
+    },
+    "metrics": {
+      "title": "Home Server \u2014 metrics",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/7xiyzcvgcx3nybvq6kpf5jd2sm/password",
+      "urls": [
+        "https://metrics.home.egouda.xyz"
+      ]
+    }
+  }
+}
