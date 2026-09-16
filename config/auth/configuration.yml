@@ -2,6 +2,7 @@
 theme: auto
 server:
   address: tcp://:9091/
+  disable_healthcheck: true # Use explicit Docker check; keep root filesystem read-only.
 log:
   level: warn
   format: json

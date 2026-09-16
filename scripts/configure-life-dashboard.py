@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Provision private dashboard auth and reconcile its NPM route on the server."""
 from pathlib import Path
+from auth_policy import protect_if_enabled
 from service_credentials import service_password
 import shutil
 import subprocess
@@ -29,7 +30,7 @@ def write(name,data):
         'cat > "$1.tmp" && chmod 644 "$1.tmp" && mv "$1.tmp" "$1"','sh',base+name],input=data,check=True)
 previous = read('life-dashboard.conf')
 write('life-dashboard.htpasswd', b'egouda:'+hashed+b'\n')
-write('life-dashboard.conf', (repo/'config/nginx/life-dashboard.conf.template').read_bytes())
+write('life-dashboard.conf', protect_if_enabled((repo/'config/nginx/life-dashboard.conf.template').read_bytes()))
 check = subprocess.run(['docker','exec','npm','nginx','-t'], capture_output=True)
 if check.returncode:
     if previous is not None: write('life-dashboard.conf',previous)

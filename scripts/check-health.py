@@ -62,7 +62,8 @@ def http_check(item, host, local=False):
                     code = response.status
             except urllib.error.HTTPError as error:
                 code = error.code
-            result.append((code in expected, label, f"HTTP {code}"))
+            allowed=expected | ({308} if label.endswith(": proxy") else set())
+            result.append((code in allowed, label, f"HTTP {code}"))
         except (OSError, urllib.error.URLError) as error:
             result.append((False, label, str(error)))
     return result

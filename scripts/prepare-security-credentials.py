@@ -70,6 +70,8 @@ def main():
         catalog['items'][name]={'title':title,'password_ref':ref,'urls':urls}
         catalog_file.write_text(json.dumps(catalog,indent=2)+'\n')
         (references/(name+'.refs')).write_text('HOME_SERVICE_USERNAME=egouda\nHOME_SERVICE_PASSWORD='+ref+'\n')
+        if name=='auth':
+            (references/'gateway.refs').write_text('HOME_AUTH_USERNAME=egouda\nHOME_AUTH_PASSWORD='+ref+'\n')
         print('Saved and read-verified:', name, flush=True)
     worker = '''import json,sys,os
 from pathlib import Path

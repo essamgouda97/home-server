@@ -2,6 +2,7 @@
 """Install private whiteboard and Pi-hole routes; validate before graceful reload."""
 from datetime import datetime, timezone
 from pathlib import Path
+from auth_policy import protect_if_enabled
 from service_credentials import service_password
 import os
 import shutil
@@ -80,7 +81,7 @@ def write(path, data):
 try:
     hashed = subprocess.run(['openssl','passwd','-6','-stdin'],input=service_password('draw').encode()+b'\n',capture_output=True,check=True).stdout.strip()
     write(routes/'draw.htpasswd', b'egouda:'+hashed+b'\n')
-    write(target, text.encode())
+    write(target, protect_if_enabled(text.encode()))
     include = b'include /data/nginx/custom/home-server/*.conf;'
     if include not in (previous[hook] or b''):
         write(hook, (previous[hook] or b'') + b'\n' + include + b'\n')

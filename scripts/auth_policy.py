@@ -12,9 +12,11 @@ def services():
     entries=json.loads((ROOT/'config/services.json').read_text())['services']
     result={}
     for entry in entries:
-        host=urlsplit(entry['url']).hostname
+        url=urlsplit(entry['url']);host=url.hostname
+        if url.scheme!='https' or not host or not (host=='home.egouda.xyz' or host.endswith('.home.egouda.xyz')) or url.username or url.query:
+            raise ValueError('Invalid household browser URL: '+entry['id'])
         policy=entry.get('auth',{})
-        if policy.get('mode')!='gateway' or policy.get('access') not in ('owner','household'):
+        if policy.get('mode')!='gateway' or policy.get('access') not in ('owner','household') or policy.get('adapter') not in ('gateway','native','trusted-header','oidc'):
             raise ValueError('Missing supported auth policy: '+entry['id'])
         if host in result:raise ValueError('Duplicate service hostname: '+host)
         result[host]=entry
@@ -79,3 +81,10 @@ def render(text, policies=None):
         changes.append((start+1,end,body))
     for start,end,body in reversed(changes):text=text[:start]+body+text[end:]
     return text,covered
+
+
+def protect_if_enabled(data):
+    """Used by every proxy generator before validation/reload, including legacy aliases."""
+    if Path('/mnt/server/npm/data/nginx/custom/home-auth/location.conf').exists():
+        return render(data.decode())[0].encode()
+    return data

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Verify real Grafana HTTPS login, provisioned dashboard and live metric samples."""
+from auth_session import AuthSession
+import atexit
 import http.cookiejar
 import json
 from pathlib import Path
@@ -8,7 +10,8 @@ import urllib.request
 import urllib.parse
 from service_credentials import service_password
 base='https://metrics.home.egouda.xyz'
-o=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+gateway=AuthSession();atexit.register(gateway.close)
+o=gateway.opener
 with o.open(urllib.request.Request(base+'/login',data=json.dumps({'user':'egouda','password':service_password('metrics')}).encode(),headers={'Content-Type':'application/json'})) as r:assert r.status==200
 with o.open(base+'/api/user') as r:assert json.load(r)['login']=='egouda'
 with o.open(base+'/api/dashboards/uid/home-server') as r:assert len(json.load(r)['dashboard']['panels'])>=10

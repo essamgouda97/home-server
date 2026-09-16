@@ -22,8 +22,12 @@ def main():
         for host,entry in services().items():
             with response(anonymous,entry['url'],{'Remote-User':'egouda','X-Forwarded-User':'egouda','X-Forwarded-Groups':'owners','X-Auth-Request-User':'egouda'}) as r:
                 # Root paths may redirect to the app's actual path before access phase.
-                if r.status in (301,302,303,307,308) and r.headers.get('Location','').startswith('/'):
-                    r=response(anonymous,'https://'+host+r.headers['Location'])
+                for _ in range(4):
+                    location=r.headers.get('Location','')
+                    if r.status not in (301,302,303,307,308) or not (location.startswith('/') or urlsplit(location).hostname==host):break
+                    from urllib.parse import urljoin
+                    r.close()
+                    r=response(anonymous,urljoin(entry['url'],location))
                 assert r.status==302 and r.headers.get('Location','').startswith(PORTAL+'/'),(entry['id'],'missing central sign-in')
                 assert not r.headers.get('WWW-Authenticate'),(entry['id'],'browser Basic prompt remains')
             with response(session.no_redirect,entry['url']) as r:
@@ -37,5 +41,13 @@ def main():
     with response(anonymous,'https://life.home.egouda.xyz',{'Cookie':saved}) as r:
         assert r.status==302 and r.headers.get('Location','').startswith(PORTAL+'/'),'Logout did not revoke server session'
     print('PASS secure HttpOnly shared cookie and server-side logout revocation')
+    import subprocess, re, yaml
+    identities=yaml.safe_load((Path.home()/'.config/home-server/secrets/authelia/users.yml').read_text())['users']
+    assert identities['mgouda']['groups']==['household']
+    for host,entry in services().items():
+        expected='one_factor' if entry['auth']['access']=='household' else 'deny'
+        result=subprocess.run(['docker','exec','home-authelia','authelia','access-control','check-policy','--config','/config/configuration.yml','--username','mgouda','--groups','household','--url',entry['url']],capture_output=True,text=True,check=True)
+        assert "The policy '"+expected+"'" in result.stdout,entry['id']+' household policy mismatch'
+    print('PASS Mariam household access and owner-only denial across all registered apps')
 
 if __name__=='__main__':main()

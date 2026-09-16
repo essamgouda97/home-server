@@ -149,9 +149,9 @@ updates rather than assuming restarts upgrade safely.
 
 ## Central sign-in follow-up
 
-The shared [authentication platform](authentication.md) is prepared for all 35
-browser routes, but its rollout awaits 1Password desktop authorization. The live
-Basic-auth protection remains active meanwhile. Native SSO adapters are separate
+The shared [authentication platform](authentication.md) is live for all 35
+registered HTTPS browser routes. Normal central sign-in replaces proxy Basic
+dialogs, including NZBGet through a private upstream credential adapter. Native SSO adapters are separate
 from gateway access and must be tested per application.
 
 The historical Speedtest Tracker `APP_KEY` literal also remains a migration item:
@@ -163,3 +163,7 @@ Latest backup attempt (September 16, during auth preparation) was safely deferre
 because the Mac had less than 1.5 GiB free. The previously verified encrypted
 snapshot remains available; no newer snapshot is claimed. Free space or select
 a larger backup destination before relying on the expanded backup source list.
+
+A smaller central-auth-only encrypted snapshot was subsequently saved and restored
+successfully. It contains the new Authelia state/configuration and does not replace
+the full configuration backup. See `scripts/backup-auth-to-mac.py`.

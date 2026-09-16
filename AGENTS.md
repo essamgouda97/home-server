@@ -33,8 +33,10 @@ Authentication is a shared platform concern: read `docs/authentication.md` befor
 adding or changing any browser route. All new apps must declare gateway access in
 `config/services.json` (owner-only by default), use the shared compiler, and pass
 `check-auth.py` before publication. Preserve native-client authentication separately.
-The central gateway is currently prepared but awaiting 1Password authorization;
-do not claim it is deployed until the documented rollout and functional checks pass.
+The central gateway is live across all registered HTTPS apps. Use
+`auth_session.AuthSession` in maintenance checks. Native application sessions are
+separate unless an explicitly tested identity adapter is configured. Preserve the
+shared compiler in every route generator, including legacy alias redirects.
 
 ## Agent skills
 

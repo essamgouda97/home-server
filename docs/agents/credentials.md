@@ -9,7 +9,7 @@ It requires the owner's desktop authorization and has no unattended broad vault 
 ```sh
 python3 scripts/vault.py status
 python3 scripts/vault.py verify metrics
-python3 scripts/vault.py exec metrics -- python3 scripts/check-metrics-from-vault.py
+python3 scripts/vault.py --with-gateway exec metrics -- python3 scripts/check-metrics-from-vault.py
 ```
 
 `config/1password/catalog.json` contains only stable `op://` references and metadata.
@@ -19,6 +19,10 @@ username/password into the child process and preserving CLI output masking.
 Scripts read `HOME_SERVICE_USERNAME` and `HOME_SERVICE_PASSWORD`; they must not
 print them, include them in URLs/arguments, dump environments, or emit HTTP bodies
 that contain tokens. Masking does not replace careful script design.
+
+`--with-gateway` additionally injects `HOME_AUTH_USERNAME` and `HOME_AUTH_PASSWORD`
+from the central login reference for apps behind the gateway. This is an explicit
+two-credential grant, not access to every application's secret.
 
 The helper narrows the secrets supplied to each child process; it is **not** a
 vault-level permission boundary. The desktop-authorized account can access other
@@ -63,7 +67,7 @@ Official references:
 ## Shared browser sign-in
 
 The [central auth standard](../authentication.md) replaces proxy Basic dialogs
-with one password-manager-compatible portal. It is prepared but not yet enabled.
-Use the `auth` vault item for that portal once saved/read-verified; keep existing
+with one password-manager-compatible portal. It is live across all registered HTTPS browser apps.
+Use the saved/read-verified `auth` vault item for that portal; keep existing
 app-specific items for native forms and recovery until their identity adapters are
 actually migrated. Never mark a native app as SSO just because it has a gateway.

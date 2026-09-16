@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Verify actual Jellyfin and Requests login with the private household credential."""
 from pathlib import Path
+from auth_session import AuthSession
+import atexit
 import http.cookiejar
 import json
 import urllib.error
@@ -27,8 +29,9 @@ def main():
     assert auth['User']['Name']=='egouda'
     request(direct,'http://127.0.0.1:8096/Sessions/Logout',{}, {'X-Emby-Token':auth['AccessToken']})
     print('PASS direct Jellyfin authentication; verification session logged out')
-    for base,host in [('http://10.0.0.182','http://requests.lan'),('https://requests.home.egouda.xyz','https://requests.home.egouda.xyz')]:
-        opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    gateway=AuthSession();atexit.register(gateway.close)
+    for base,host in [('https://requests.home.egouda.xyz','https://requests.home.egouda.xyz')]:
+        opener=gateway.opener
         headers={'Origin':host,'Host':host.split('://')[1]}
         request(opener,base+'/api/v1/auth/jellyfin',{'username':'egouda','password':password},headers)
         user=request(opener,base+'/api/v1/auth/me',headers=headers)

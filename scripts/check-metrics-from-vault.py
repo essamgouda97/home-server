@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Real HTTPS login using only the credential injected by `vault.py exec metrics`."""
+from auth_session import AuthSession
+import atexit
 import http.cookiejar
 import json
 import os
 import urllib.request
 base='https://metrics.home.egouda.xyz'
-o=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+gateway=AuthSession(password=os.environ['HOME_AUTH_PASSWORD']);atexit.register(gateway.close)
+o=gateway.opener
 req=urllib.request.Request(base+'/login',data=json.dumps({'user':os.environ['HOME_SERVICE_USERNAME'],'password':os.environ['HOME_SERVICE_PASSWORD']}).encode(),headers={'Content-Type':'application/json'})
 with o.open(req,timeout=20) as r:assert r.status==200
 with o.open(base+'/api/user') as r:assert json.load(r)['login']=='egouda'

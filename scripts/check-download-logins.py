@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verify owner passwords with actual logins, never API keys or auth bypass."""
+from auth_session import AuthSession
 import argparse
 import http.cookiejar
 import json
@@ -15,10 +16,14 @@ def main():
     secrets=Path.home()/'.config/home-server/secrets'
     active=secrets/'service-passwords.json'
     passwords=json.loads(active.read_text()) if active.exists() else {}
+    gateway=AuthSession() if not args.local and 'auth' in passwords else None
+    if gateway:
+        import atexit
+        atexit.register(gateway.close)
     for name,port in [('torrents',15080),('sonarr',8989),('radarr',7878),('prowlarr',9696)]:
         password=passwords.get(name) or (secrets/'creative_password').read_text().strip()
         base='http://127.0.0.1:'+str(port) if args.local else 'https://'+name+'.home.egouda.xyz'
-        jar=http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        jar=gateway.cookies if gateway else http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
         is_q=name=='torrents'
         if not is_q:
             with opener.open(base,timeout=20) as response:

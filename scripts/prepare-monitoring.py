@@ -2,6 +2,7 @@
 """Run on server after escrowing metrics credentials; install isolated monitoring."""
 import json
 from pathlib import Path
+from auth_policy import protect_if_enabled
 import subprocess
 import os
 os.umask(0o077)
@@ -23,7 +24,7 @@ subprocess.run(['systemctl','--user','daemon-reload'],check=True)
 subprocess.run(['systemctl','--user','enable','--now','home-server-metrics.timer'],check=True)
 subprocess.run(['docker','compose','-f','compose.monitoring.yml','config','--quiet'],cwd=repo,check=True)
 subprocess.run(['docker','compose','-f','compose.monitoring.yml','up','-d'],cwd=repo,check=True)
-config=(repo/'config/nginx/metrics.conf.template').read_bytes()
+config=protect_if_enabled((repo/'config/nginx/metrics.conf.template').read_bytes())
 subprocess.run(['docker','exec','-i','npm','sh','-c','cat > /data/nginx/custom/home-server/metrics.conf'],input=config,check=True)
 subprocess.run(['docker','exec','npm','nginx','-t'],check=True,capture_output=True)
 subprocess.run(['docker','exec','npm','nginx','-s','reload'],check=True,capture_output=True)

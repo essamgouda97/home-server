@@ -7,7 +7,7 @@ without browser UIs appear in Grafana, not as broken dashboard links.
 ## New-service workflow
 
 1. Add reproducible Compose/configuration. Keep backends private and expose a
-   password-protected HTTPS route through NPM. Follow [security boundaries](security-hardening.md).
+   gateway-protected HTTPS route through NPM using `auth_policy.protect_if_enabled`. Follow [security boundaries](security-hardening.md).
 2. Save and read-verify a distinct owner credential in 1Password **before** applying
    it. Use the [password saving flow](security-hardening.md#save-before-changing-an-app).
    If the app authenticates through another service, reference that identity instead.
@@ -19,7 +19,7 @@ python3 scripts/register-service.py \
   --id example --title 'Example' \
   --url https://example.home.egouda.xyz/ \
   --probe-url http://example:8080/health \
-  --credential example --category Applications --sync
+  --credential auth --access owner --adapter gateway --category Applications --sync
 ```
 
 `--sync` sends the catalog to the server, checks all registered URLs, updates

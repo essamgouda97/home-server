@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Read-only HTTPS, link, origin and WebSocket checks on the home server."""
 from pathlib import Path
-from service_credentials import service_password
-import base64
+from auth_session import AuthSession
+import atexit
 import json
 import re
 import socket
@@ -16,12 +16,10 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def main():
     context = ssl.create_default_context()
     opener = urllib.request.build_opener(NoRedirect,urllib.request.HTTPSHandler(context=context))
-    secret = service_password('draw')
-    auth = 'Basic '+base64.b64encode(('egouda:'+secret).encode()).decode()
+    gateway=AuthSession();atexit.register(gateway.close)
+    auth=gateway.cookie_header('https://draw.home.egouda.xyz')
     def get(host,path='/',authenticated=False,method='GET',origin=None):
-        name=host.split('.')[0]
-        specific_auth='Basic '+base64.b64encode(('egouda:'+service_password(name)).encode()).decode()
-        headers = {'Authorization':specific_auth} if authenticated else {}
+        headers = {'Cookie':gateway.cookie_header('https://'+host)} if authenticated else {}
         if origin: headers['Origin']=origin
         request = urllib.request.Request('https://'+host+path,headers=headers,method=method)
         try: return opener.open(request,timeout=20)
@@ -47,7 +45,7 @@ def main():
         assert response.code==403
     with socket.create_connection((host,443),timeout=10) as connection:
         with context.wrap_socket(connection,server_hostname=host) as secure:
-            request = ('GET / HTTP/1.1\r\nHost: '+host+'\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nOrigin: https://'+host+'\r\nAuthorization: '+auth+'\r\n\r\n')
+            request = ('GET / HTTP/1.1\r\nHost: '+host+'\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nOrigin: https://'+host+'\r\nCookie: '+auth+'\r\n\r\n')
             secure.sendall(request.encode())
             assert secure.recv(4096).split(b'\r\n',1)[0]==b'HTTP/1.1 101 Switching Protocols'
     print('PASS saved boards, cross-origin rejection and secure whiteboard WebSocket')

@@ -42,3 +42,9 @@ is included in configuration backups; historical metric samples are excluded.
 Use `systemctl --user status home-server-metrics.timer` and
 `docker compose -f compose.monitoring.yml ps` for status. Dashboard JSON, datasource,
 alerts and collector are versioned under `config/monitoring` and `scripts`.
+
+Browser access first uses the shared [sign-in gateway](authentication.md), then
+Grafana's native login. Both sessions are exercised by `check-monitoring.py`.
+The Mac vault check uses `vault.py --with-gateway exec metrics -- python3
+scripts/check-metrics-from-vault.py`, explicitly injecting the two required
+credentials. Desktop authorization is required by 1Password.

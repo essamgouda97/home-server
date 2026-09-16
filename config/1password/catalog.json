@@ -80,6 +80,13 @@
       "urls": [
         "https://metrics.home.egouda.xyz"
       ]
+    },
+    "auth": {
+      "title": "Home Server \u2014 auth",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/kdqs7hn3utij4cnmclngcda65u/password",
+      "urls": [
+        "https://auth.home.egouda.xyz"
+      ]
     }
   }
 }

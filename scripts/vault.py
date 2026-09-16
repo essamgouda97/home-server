@@ -9,6 +9,7 @@ import sys
 repo=Path(__file__).resolve().parents[1]
 config=json.loads((repo/'config/1password/catalog.json').read_text())
 p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--with-gateway',action='store_true',help='Also inject the shared auth credential for protected HTTPS checks')
 p.add_argument('action',choices=['status','verify','exec'])
 p.add_argument('service',nargs='?')
 p.add_argument('command',nargs=argparse.REMAINDER)
@@ -24,5 +25,7 @@ else:
   command=[sys.executable,'-c',"import os;assert len(os.environ['HOME_SERVICE_PASSWORD'])>=24;print('PASS credential resolved without displaying its value')"]
  if not command:raise SystemExit('Provide a command after --')
  # Keep op's default output masking. Never add --no-masking.
- result=subprocess.run(['op','run','--account',config['account'],'--env-file',str(repo/'config/1password'/(a.service+'.refs')),'--',*command])
+ files=['--env-file',str(repo/'config/1password'/(a.service+'.refs'))]
+ if a.with_gateway:files+=['--env-file',str(repo/'config/1password/gateway.refs')]
+ result=subprocess.run(['op','run','--account',config['account'],*files,'--',*command])
  raise SystemExit(result.returncode)

@@ -2,16 +2,29 @@
 
 ## Rollout status — 2026-09-16
 
-**Prepared, not yet enabled in production.** The owner requested central browser
-sign-in across every app. Deployment is waiting for 1Password desktop authorization
-to save/read-verify the new `auth` login. Existing application authentication is
-still active. Do not describe policy coverage as a completed migration.
+**Enabled in production across all 35 registered HTTPS browser apps.**
+The central owner login is saved/read-verified as **Home Server — auth** in the
+owner-authorized 1Password Employee vault, at `https://auth.home.egouda.xyz`.
+Normal form fields advertise `autocomplete=username` and `current-password`.
+The browser visibly detects 1Password; automatic suggestion/filling still requires
+confirmation in the owner's extension session. If its menu is absent, unlock the
+Chrome extension and use Command-Backslash to select the saved login.
 
-The compiler covers 35 HTTPS browser routes, including Homarr, Metrics and Coach.
-Its repeatability, unknown-route rejection and legacy redirects pass regression
-checks. An isolated Authelia container passed an actual first-factor login using a
-converted Jellyfin-format test verifier; household access was allowed and owner-only
-and unregistered hosts were denied. No production proxy was changed by these tests.
+Verified: real owner login and shared session across 35 apps; anonymous and forged
+identity-header rejection; secure HttpOnly cookies; server-side logout; Mariam's
+household policy allows media routes and denies owner-only apps. The file-backed
+password-verifier import was checked against a real known Jellyfin verifier and an
+isolated login fixture. Mariam's own interactive sign-in remains a household check.
+
+Application checks passed for Jellyfin/Requests, qBittorrent/Sonarr/Radarr/Prowlarr,
+Grafana live data, whiteboard boards/MCP/WebSockets, Footage, Life Dashboard and
+Coach. Mac network and server health checks passed. Life Dashboard now explicitly
+accepts its HTTPS browser origin for edits while rejecting unrelated origins.
+
+An encrypted **central-auth-only** backup was restored and its SQLite database
+verified on September 16 (`scripts/backup-auth-to-mac.py`). The larger scheduled
+configuration backup remains constrained by Mac disk space; this small snapshot
+does not replace it.
 
 ## Contract for every application
 
@@ -24,7 +37,7 @@ and unregistered hosts were denied. No production proxy was changed by these tes
   Nginx include and is supplied only behind authenticated, owner-only access.
 - App sessions and app roles remain separate from gateway authorization. A gateway
   cannot create an application's native session by itself.
-- New custom services use the trusted gateway identity and do not implement their
+- New custom services must use the trusted gateway identity and must not implement their
   own password database. Existing apps use supported OIDC or trusted-header adapters
   when available; otherwise their native form remains behind the gateway.
 - Never disable an app's native auth unless its backend is isolated and its identity
@@ -73,8 +86,8 @@ SMB, SSH, DNS and background workers are protocols/services, not browser login p
    previous configuration. Applied credentials are recorded only after success.
 5. Test actual app functionality, browser autofill, Mariam's household access,
    denied admin access, uploads, whiteboard WebSockets and native media clients.
-   Update maintenance checks to use `auth_session.AuthSession` before retiring
-   Basic-auth checks. Run `make check-network` on the Mac and `make check-server`
+   Maintenance checks use `auth_session.AuthSession`; keep that shared client
+   when adding authenticated tests. Run `make check-network` on the Mac and `make check-server`
    on the server, then make an encrypted recovery snapshot.
 
 Private rollback snapshots live under
@@ -114,3 +127,21 @@ flowchart LR
 References: [Authelia Nginx integration](https://www.authelia.com/integration/proxies/nginx/),
 [session configuration](https://www.authelia.com/configuration/session/introduction/),
 [supported password verifiers](https://www.authelia.com/reference/guides/passwords/).
+
+## Operational lessons
+
+Authelia 4.39.27 attempts to create a healthcheck file on its root filesystem.
+With a read-only container, disable that generated healthcheck in server settings
+and use the explicit Docker HTTP healthcheck in `compose.auth.yml`. Preparation
+waits for container health before any proxy rollout. A failed first rollout
+exercised the proxy rollback path successfully.
+
+Proxy configuration is read through Docker so root-owned files remain accessible
+to the maintenance script. The private NZBGet credential include stays mode 600;
+non-secret proxy snippets are mode 644. A route root may perform a harmless local
+redirect before Nginx's access phase; auth checks follow only same-host redirects
+and require the destination to reach central sign-in.
+
+Policy changes recreate Authelia only when its generated configuration changes;
+ordinary repeated preparation does not discard sessions. Sessions use in-memory
+storage, so a real policy restart will require sign-in again.

@@ -10,10 +10,16 @@ from auth_policy import render,services,ROOT
 
 NGINX=Path('/mnt/server/npm/data/nginx')
 
+def read(path):
+    target='/data/nginx/'+str(path.relative_to(NGINX))
+    r=subprocess.run(['docker','exec','npm','cat',target],capture_output=True)
+    if r.returncode:raise RuntimeError('Unable to read proxy configuration')
+    return r.stdout
+
 def write(path, data):
     # All file names are generated constants; secret content travels over stdin.
     target='/data/nginx/'+str(path.relative_to(NGINX))
-    r=subprocess.run(['docker','exec','-i','npm','sh','-c','mkdir -p "$(dirname "$1")" && cat > "$1.pending" && chmod 600 "$1.pending" && mv "$1.pending" "$1"','sh',target],input=data,capture_output=True)
+    r=subprocess.run(['docker','exec','-i','npm','sh','-c','mkdir -p "$(dirname "$1")" && cat > "$1.pending" && chmod "$2" "$1.pending" && mv "$1.pending" "$1"','sh',target,'600' if path.name=='nzbget.conf' else '644'],input=data,capture_output=True)
     if r.returncode:raise RuntimeError('Unable to write proxy configuration')
 
 def main():
@@ -24,7 +30,7 @@ def main():
     files=sorted((NGINX/'proxy_host').glob('*.conf'))+sorted((NGINX/'custom/home-server').glob('*.conf'))
     proposed={};covered=set()
     for file in files:
-        raw=file.read_text();updated,hosts=render(raw,policies);covered.update(hosts)
+        raw=read(file).decode();updated,hosts=render(raw,policies);covered.update(hosts)
         if updated!=raw:proposed[file]=updated.encode()
     assert set(policies)<=covered,'Missing HTTPS route(s): '+','.join(sorted(set(policies)-covered))
     for filename,target in [('nginx-location.conf','location.conf'),('nginx-identity.conf','identity.conf')]:
@@ -39,10 +45,10 @@ def main():
     proposed[NGINX/'custom/home-auth/nzbget.conf']=('proxy_set_header Authorization "Basic '+value+'";\nproxy_hide_header WWW-Authenticate;\n').encode()
     # Global guard: a future proxy missing its registered auth location fails closed.
     top=NGINX/'custom/http_top.conf'
-    original_top=top.read_text() if top.exists() else ''
+    original_top=read(top).decode() if top.exists() else ''
     if '# home-auth-default' not in original_top:
         proposed[top]=(original_top+'\n# home-auth-default\nauth_request /internal/authelia/authz;\n').encode()
-    originals={p:p.read_bytes() if p.exists() else None for p in proposed}
+    originals={p:read(p) if p.exists() else None for p in proposed}
     for p,data in originals.items():
         dest=backup/p.relative_to(NGINX);dest.parent.mkdir(parents=True,exist_ok=True)
         if data is not None:dest.write_bytes(data)

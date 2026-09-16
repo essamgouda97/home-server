@@ -54,7 +54,10 @@ def main():
         assert s['auth']['mode']=='gateway' and s['auth']['access'] in ('household','owner')
         rules.append({'domain':urlsplit(s['url']).hostname,'policy':'one_factor','subject':['group:'+('household' if s['auth']['access']=='household' else 'owners')]})
     config['access_control']['rules']=rules
-    (DEST/'configuration.yml').write_text(yaml.safe_dump(config,sort_keys=False))
+    config_path=DEST/'configuration.yml'
+    rendered=yaml.safe_dump(config,sort_keys=False)
+    changed=not config_path.exists() or config_path.read_text()!=rendered
+    config_path.write_text(rendered)
     # SSD path creation requires existing owner sudo authorization, not a new secret.
     sudo=(PRIVATE/'creative_password').read_text().strip()+'\n'
     r=subprocess.run(['sudo','-S','-p','','install','-d','-m','700','-o','1000','-g','1000','/srv/mergerfs/ssd/authelia'],input=sudo,text=True,capture_output=True)
@@ -66,7 +69,7 @@ def main():
         # Error messages can contain private configuration. Retain privately only.
         (DEST/'validation.log').write_text(r.stdout+r.stderr)
         raise SystemExit('Auth configuration validation failed; private validation.log retained')
-    subprocess.run(command+['up','-d'],cwd=ROOT,check=True)
+    subprocess.run(command+['up','-d','--wait','--wait-timeout','60']+(['--force-recreate'] if changed else []),cwd=ROOT,check=True)
     print('Central auth configured; owner and household identities prepared. Proxy unchanged.')
 
 if __name__=='__main__':main()

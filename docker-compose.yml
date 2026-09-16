@@ -61,7 +61,7 @@ services:
     user: "1000:1000"
     environment:
       LIFE_DASHBOARD_SERVER: "1"
-      LIFE_DASHBOARD_ORIGINS: http://life.lan
+      LIFE_DASHBOARD_ORIGINS: https://life.home.egouda.xyz,http://life.lan
       CONTENT_STUDIO_OTIO_PYTHON: /opt/life-python/bin/python
       FITBIT_AIR_STATE_PATH: /app/personal-finances/data/bridge/fitbit-live.json
       CODEX_HOME: /home/node/.codex

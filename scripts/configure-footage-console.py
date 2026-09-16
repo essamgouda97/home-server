@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run on the server: provision private Codex auth and authenticated ingest.lan."""
 from pathlib import Path
+from auth_policy import protect_if_enabled
 from service_credentials import service_password
 import shutil
 import subprocess
@@ -32,7 +33,7 @@ def write(name, data):
 
 previous = read('footage.conf')
 write('footage.htpasswd', b'egouda:' + hashed + b'\n')
-write('footage.conf', (repo / 'config/nginx/footage.conf.template').read_bytes())
+write('footage.conf', protect_if_enabled((repo / 'config/nginx/footage.conf.template').read_bytes()))
 check = subprocess.run(['docker', 'exec', 'npm', 'nginx', '-t'], capture_output=True)
 if check.returncode:
     if previous is not None:
