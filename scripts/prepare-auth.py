@@ -43,6 +43,15 @@ def main():
         users={'egouda':{'displayname':'Essam','password':pbkdf2(password),'email':'egouda@home.egouda.xyz','groups':['owners','household']},
                'mgouda':{'displayname':'Mariam','password':import_jellyfin(old['mgouda']),'email':'mgouda@home.egouda.xyz','groups':['household']}}
         users_path.write_text(yaml.safe_dump({'users':users}))
+    from identity_policy import identities, groups, subjects
+    previous_users=users_path.read_text()
+    users=yaml.safe_load(previous_users)
+    for username, person in identities().items():
+        assert username in users['users'], 'Enroll new identity securely before granting access: '+username
+        users['users'][username]['groups']=groups(username)
+    rendered_users=yaml.safe_dump(users)
+    users_changed=previous_users!=rendered_users
+    if users_changed:users_path.write_text(rendered_users)
     for name in ['jwt_secret','session_secret','storage_key']:
         p=DEST/name
         if not p.exists():p.write_text(secrets.token_urlsafe(48))
@@ -52,11 +61,14 @@ def main():
     rules=[]
     for s in catalog:
         assert s['auth']['mode']=='gateway' and s['auth']['access'] in ('household','owner')
-        rules.append({'domain':urlsplit(s['url']).hostname,'policy':'one_factor','subject':['group:'+('household' if s['auth']['access']=='household' else 'owners')]})
+        rules.append({'domain':urlsplit(s['url']).hostname,'policy':'one_factor','subject':subjects(s['id'])})
     config['access_control']['rules']=rules
+    from oidc_config import configure
+    configure(config, DEST)
     config_path=DEST/'configuration.yml'
     rendered=yaml.safe_dump(config,sort_keys=False)
-    changed=not config_path.exists() or config_path.read_text()!=rendered
+    previous=config_path.read_text() if config_path.exists() else None
+    changed=previous!=rendered or users_changed
     config_path.write_text(rendered)
     # SSD path creation requires existing owner sudo authorization, not a new secret.
     sudo=(PRIVATE/'creative_password').read_text().strip()+'\n'
@@ -68,8 +80,12 @@ def main():
     if r.returncode:
         # Error messages can contain private configuration. Retain privately only.
         (DEST/'validation.log').write_text(r.stdout+r.stderr)
+        if previous is not None:config_path.write_text(previous)
         raise SystemExit('Auth configuration validation failed; private validation.log retained')
     subprocess.run(command+['up','-d','--wait','--wait-timeout','60']+(['--force-recreate'] if changed else []),cwd=ROOT,check=True)
+    if changed and Path('/mnt/server/npm/data/nginx/custom/home-auth/location.conf').exists():
+        result=subprocess.run(['docker','exec','npm','nginx','-s','reload'],capture_output=True,text=True)
+        assert result.returncode==0,'Refresh proxy DNS after IdP restart failed'
     print('Central auth configured; owner and household identities prepared. Proxy unchanged.')
 
 if __name__=='__main__':main()

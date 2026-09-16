@@ -1,147 +1,195 @@
-# Shared authentication standard
+# Household identity and application sign-in
 
-## Rollout status — 2026-09-16
+## Current state — September 16, 2026
 
-**Enabled in production across all 35 registered HTTPS browser apps.**
-The central owner login is saved/read-verified as **Home Server — auth** in the
-owner-authorized 1Password Employee vault, at `https://auth.home.egouda.xyz`.
-Normal form fields advertise `autocomplete=username` and `current-password`.
-The browser visibly detects 1Password; automatic suggestion/filling still requires
-confirmation in the owner's extension session. If its menu is absent, unlock the
-Chrome extension and use Command-Backslash to select the saved login.
+Authelia is the shared identity provider at `https://auth.home.egouda.xyz`.
+Use **Home Server — auth** in 1Password. Every registered HTTPS app has central
+access control. This does **not** mean every app has native single sign-on.
 
-Verified: real owner login and shared session across 35 apps; anonymous and forged
-identity-header rejection; secure HttpOnly cookies; server-side logout; Mariam's
-household policy allows media routes and denies owner-only apps. The file-backed
-password-verifier import was checked against a real known Jellyfin verifier and an
-isolated login fixture. Mariam's own interactive sign-in remains a household check.
+| Application | App sign-in | Verification |
+|---|---|---|
+| Homarr | OIDC, automatic redirect | One central credential opens existing owner account/boards |
+| Grafana | OIDC, automatic redirect | One central credential opens existing administrator and dashboard |
+| Local Drive / File Browser | Trusted `Remote-User` | One central credential opens existing owner; forged identity overwritten |
+| Draw, Life, Footage and gateway-only tools | Gateway identity | No additional application login configured |
+| Jellyfin | OIDC through pinned Community SSO plugin | Central-only sign-in tested at `/sso/OID/start/authelia`; existing profiles and native TV login preserved |
+| Vue, Requests and other `native` catalog entries | Application-native session | Native SSO remains work in progress |
 
-Application checks passed for Jellyfin/Requests, qBittorrent/Sonarr/Radarr/Prowlarr,
-Grafana live data, whiteboard boards/MCP/WebSockets, Footage, Life Dashboard and
-Coach. Mac network and server health checks passed. Life Dashboard now explicitly
-accepts its HTTPS browser origin for edits while rejecting unrelated origins.
+The distinction matters: a `200` response containing a login form is not proof
+of application sign-in. Run `check-homarr-sso.py`, `check-metrics-sso.py` and
+`check-files-sso.py` and `check-jellyfin-sso.py` to prove native identities using **only** the central password.
+`check-auth.py` checks gateway authorization separately.
 
-An encrypted **central-auth-only** backup was restored and its SQLite database
-verified on September 16 (`scripts/backup-auth-to-mac.py`). The larger scheduled
-configuration backup remains constrained by Mac disk space; this small snapshot
-does not replace it.
+## Household identities and least privilege
 
-## Contract for every application
+`config/identities.json` is the non-secret source of truth:
 
-- Browser entry point: registered HTTPS URL under `home.egouda.xyz`.
-- Identity provider: self-hosted Authelia at `https://auth.home.egouda.xyz`.
-- Browser credentials: normal HTML sign-in compatible with password-manager autofill.
-- Authorization: explicit `auth` entry in `config/services.json`; owner-only by default.
-- Unknown apps fail closed. A route is not ready merely because its container runs.
-- No HTTP Basic prompts. NZBGet's upstream Basic credential stays in a private
-  Nginx include and is supplied only behind authenticated, owner-only access.
-- App sessions and app roles remain separate from gateway authorization. A gateway
-  cannot create an application's native session by itself.
-- New custom services must use the trusted gateway identity and must not implement their
-  own password database. Existing apps use supported OIDC or trusted-header adapters
-  when available; otherwise their native form remains behind the gateway.
-- Never disable an app's native auth unless its backend is isolated and its identity
-  adapter is tested. Never implement password replay or browser cookie scraping.
+- `egouda`: owner; all registered services.
+- `mgouda`: Homarr, Jellyfin, Vue, Requests. No owner/admin tools or file storage
+  access is implicitly granted.
+- New users: no wildcard grants, no owner role from the enrollment helper.
 
-Each service declares:
+`auth.access: household` means a service is eligible for explicit household grants,
+not that all household accounts can open it. Authelia authorizes `owners` OR that
+service's `service:<id>` group. OIDC clients enforce the same policy. The base
+`household` group itself grants nothing. Unknown routes fail closed.
 
-```json
-"auth": {"mode": "gateway", "access": "owner", "adapter": "gateway"}
+Homarr accounts link to **stable OIDC subject identifiers**, provisioned explicitly;
+automatic email/credentials account linking is disabled after the owner migration.
+Grafana's temporary email-matching migration setting is also disabled. Its existing
+OAuth account mapping retains owner ID 1 and administrator permissions.
+
+`provision-homarr-identities.py` creates private, read-only personal home boards
+containing only granted services. The owner's board/layout remains separate. It
+reconciles generated household boards, so customize the owner board freely but
+change household tiles through the entitlement catalog.
+
+Mariam's Jellyfin ID, password verifier and Jellyseerr ID/permissions are preserved.
+`check-household-identities.py` verifies these and her Homarr permissions. It does
+not claim to have entered Mariam's password or tested her personal interactive flow.
+
+## Enroll a future household member
+
+Use the owner-only [People console](people.md) for a 24-hour, single-use private
+invitation. The new person sets their own password; the same enrollment helper
+below provisions the central and supported native accounts. The CLI remains an
+operator recovery path.
+
+Run on the server in an interactive terminal, not in chat:
+
+```sh
+ssh -t home-server
+cd ~/workspace/home-server
+python3 scripts/enroll-household-user.py USERNAME --name 'Display name' \
+  --services homarr,jellyfin,vue,requests
 ```
 
-`access` is `owner` or `household`. `adapter` describes the application integration:
-`gateway` for apps relying on the gateway; `native` for existing application forms;
-`trusted-header` or `oidc` only after that integration is actually configured/tested.
-These labels are not a claim that native SSO has already been deployed.
+The password prompt is hidden and requires confirmation. The helper refuses existing
+identities; it is **not** a password-reset or migration tool. It creates an ordinary
+Jellyfin profile, optionally imports that specific ID into Requests, creates the
+central verifier, applies explicit grants and provisions the private Homarr board.
+Requests uses its configured default permissions; review those before enrolling.
+No new real household account was created while building this helper.
 
-## Household accounts and native clients
+For file storage, include `files` explicitly. A dedicated
+`/srv/mergerfs/ssd/creative/People/USERNAME` folder is created, with the File Browser
+user restricted to `Creative/People/USERNAME`; no admin, command execution or public
+sharing permission. File Browser's unused native password is random, not a shared
+household secret. Do not grant `files` by editing JSON alone before provisioning
+its isolated native profile.
 
-`egouda` belongs to `owners` and `household`. `mgouda` belongs only to `household`.
-Mariam's existing Jellyfin PBKDF2 verifier can be imported without knowing her
-password. The conversion is tested against an independently computed fixture and
-the known owner verifier before import. Do not grant her administrator access.
-This is an initial verifier import, **not continuous password synchronization**.
-Central password changes and Jellyfin native password changes remain separate until
-an app-supported identity integration is deployed.
+Store the person's central login in their chosen password manager. Commit/sync only
+the non-secret identities catalog to both checkouts. Native and central Jellyfin
+passwords start equal for newly enrolled users, but **later password changes are
+not synchronized**. Existing Mariam enrollment imported her verifier without
+learning her password. Native clients remain explicitly separate until supported
+identity integration is verified.
 
-Jellyfin and Home Assistant native clients cannot complete a browser gateway flow.
-Their existing private `.lan` and direct-LAN entry points retain application-native
-authentication. Browser links in Homarr use the protected HTTPS entry point. No
-header-presence bypass is used. APIs between containers retain their native API keys
-and Docker endpoints; do not redirect machine integrations through browser login.
-SMB, SSH, DNS and background workers are protocols/services, not browser login pages.
+If enrollment stops partway through, investigate the named profile before retrying;
+the helper deliberately refuses overwriting partially provisioned existing users.
+Do not delete/recreate an account that may already have history.
 
-## Deployment and rollback
+## Every new application's contract
 
-1. On the Mac, run `prepare-security-credentials.py --service auth --url
-   https://auth.home.egouda.xyz`; approve the 1Password desktop prompt. The helper
-   saves, reads back, and privately stages the credential before deployment.
-2. Sync the auth compose, templates, catalog and helper scripts to the server.
-3. Run `python3 scripts/prepare-auth.py` on the server. It creates private keys,
-   file-backed user verifiers and the policy; validates configuration; then starts
-   the pinned Authelia container without changing app proxies.
-4. Run `python3 scripts/configure-auth-proxies.py`. It snapshots touched config
-   outside Git, validates Nginx, reloads, and performs real sign-in/anonymous/spoof/
-   logout checks against every registered HTTPS app. A failed check restores the
-   previous configuration. Applied credentials are recorded only after success.
-5. Test actual app functionality, browser autofill, Mariam's household access,
-   denied admin access, uploads, whiteboard WebSockets and native media clients.
-   Maintenance checks use `auth_session.AuthSession`; keep that shared client
-   when adding authenticated tests. Run `make check-network` on the Mac and `make check-server`
-   on the server, then make an encrypted recovery snapshot.
+1. Register its HTTPS URL, `auth.access`, and actual `auth.adapter` in
+   `config/services.json`; owner-only is the default.
+2. Prefer app-supported OIDC and automatic login. Use trusted headers only after
+   isolating its backend and overwriting identity headers at the proxy.
+3. Provision native users/roles/scopes before granting access. Never infer admin
+   privileges from a matching username or email.
+4. Test one central sign-in followed by **native application identity**, household
+   denial, spoofed headers, logout, API/native-client compatibility and recovery.
+5. Publish Homarr tiles, household boards, metrics and architecture status.
 
-Private rollback snapshots live under
-`~/.local/state/home-server-maintenance/auth/<timestamp>/`. Restore exactly the
-files in `manifest.json`; remove only newly created files marked absent, validate
-Nginx and reload. Do not restore unrelated concurrent application files. Keep SSH
-available throughout rollout. Authelia failure must deny protected requests.
+`register-service.py --sync` reconciles policy, runs gateway checks, updates Homarr
+and its household boards. It cannot implement an application's native adapter.
+Keep `adapter: native` until that additional integration actually passes its test.
+Do not replay passwords or scrape browser cookies to simulate SSO.
 
-Secrets/config are under `~/.config/home-server/secrets/authelia`, mode restricted;
-SQLite state lives on SSD `/srv/mergerfs/ssd/authelia`. Back up both together.
-In-memory gateway sessions are lost on Authelia restart. Password-reset/change UI
-is initially disabled; changes must go through the vaulted maintenance flow.
-Gateway policy is initially one-factor; Cloudflare's separately enabled MFA does
-not make this gateway MFA-protected. Enroll and test a second factor before requiring it.
+The File Browser backend has no published port and belongs only to the internal
+`home-server_files_auth` network. That network contains exactly Nginx and File
+Browser. Homarr/other app containers cannot reach its trusted-header endpoint.
+`configure-files-sso.py` verifies this prerequisite and retains a private database
+rollback copy. Do not reattach File Browser to the shared proxy network.
 
-## New app checklist enforced by registration
+## Operations and recovery
 
-`register-service.py` defaults to owner-only gateway access. `--sync` prepares
-central policy, applies it, tests every route, then updates Homarr and metrics.
-The HTTPS generator invokes the same compiler once central auth is installed.
-Every proxy location overwrites identity headers; do not trust headers supplied by
-clients or expose a trusted-header backend directly. Any new proxy generator must
-use this compiler before publishing a route.
+Private state is under `~/.config/home-server/secrets/authelia`, mode 700/600.
+`oidc.json` contains signing/HMAC keys and client secrets; generated per-app env
+files never enter Git. `prepare-auth.py` generates/validates configuration and
+retains the prior configuration if validation fails. Never print its private logs.
+OIDC uses exact callback URLs, PKCE S256 and explicit client policies. Trusted
+first-party clients skip repeated consent prompts.
+
+```sh
+python3 scripts/prepare-auth.py
+python3 scripts/provision-homarr-identities.py
+python3 scripts/check-homarr-sso.py
+python3 scripts/check-metrics-sso.py
+python3 scripts/check-files-sso.py
+python3 scripts/check-household-identities.py
+python3 scripts/check-auth.py
+make check-server                    # server
+make check-network                   # Mac
+python3 scripts/backup-auth-to-mac.py # Mac
+```
+
+A real config/group change restarts Authelia and invalidates in-memory gateway
+sessions. An unchanged preparation preserves sessions. After a restart the helper
+reloads Nginx to avoid briefly cached Docker addresses. Application OIDC sessions
+are separate, but every browser request still passes gateway authorization.
+Native LAN/TV credentials and sessions must be revoked separately when offboarding.
+
+Private rollback state is under `~/.local/state/home-server-maintenance/sso/` and
+`.../auth/`. The small encrypted Mac backup now includes the central database,
+keys/verifiers, identity catalog and Homarr's database/identity links; its two
+SQLite databases passed a restore check. This is not a media backup or a complete
+replacement for the larger scheduled configuration backup.
+
+Current gateway authentication is **one factor**. Cloudflare/GitHub MFA does not
+make Authelia MFA-protected. Require central MFA only after the user's personal
+passkey/TOTP enrollment and recovery have been tested; never lock out the family
+by enabling a requirement before enrollment.
+
+## Editable diagrams
+
+At `https://draw.home.egouda.xyz`, open **Authentication architecture** or
+**Authentication — service matrix**. They show the identity flow, household scope,
+backend isolation and real adapter status for every registered browser service.
+`scripts/publish-auth-architecture.py` is the reproducible source and preserves
+existing populated boards rather than overwriting human edits.
 
 ```mermaid
 flowchart LR
-  Browser --> HTTPS[Nginx HTTPS entry]
-  HTTPS --> Auth[Authelia session and access policy]
-  Auth --> Vault[Vaulted owner credential / household verifiers]
-  HTTPS --> App[App identity adapter]
-  Catalog[Service catalog] --> Auth
-  Catalog --> Homarr
-  Catalog --> Metrics
-  Native[Native clients] --> NativeAuth[Private app-native authentication]
+  User[Household browser] --> Edge[Private HTTPS / Nginx]
+  Edge --> Auth[Authelia identity + service grants]
+  Catalog[Services + identities catalogs] --> Auth
+  Auth --> OIDC[OIDC: Homarr / Grafana]
+  Edge --> Header[Isolated header adapter: File Browser]
+  Edge --> Gateway[Gateway-only applications]
+  Edge --> Native[Native-form exceptions]
+  Catalog --> Home[Personal Homarr boards]
+  Catalog --> Diagram[Draw architecture + service matrix]
+  Auth --> Backup[Encrypted identity recovery backup]
 ```
 
-References: [Authelia Nginx integration](https://www.authelia.com/integration/proxies/nginx/),
-[session configuration](https://www.authelia.com/configuration/session/introduction/),
-[supported password verifiers](https://www.authelia.com/reference/guides/passwords/).
+References: [Homarr SSO](https://homarr.dev/docs/advanced/single-sign-on/),
+[Authelia OIDC](https://www.authelia.com/configuration/identity-providers/openid-connect/provider/),
+[Grafana OAuth](https://grafana.com/docs/grafana/latest/setup-grafana/configure-access/configure-authentication/generic-oauth/),
+[File Browser proxy authentication](https://filebrowser.org/authentication.html).
 
-## Operational lessons
+## Media client and TV work
 
-Authelia 4.39.27 attempts to create a healthcheck file on its root filesystem.
-With a read-only container, disable that generated healthcheck in server settings
-and use the explicit Docker HTTP healthcheck in `compose.auth.yml`. Preparation
-waits for container health before any proxy rollout. A failed first rollout
-exercised the proxy rollback path successfully.
+Jellyfin is pinned to 10.11.11 after a stopped, SQLite-verified full configuration
+backup at `~/.local/state/home-server-maintenance/sso/jellyfin-pre-10.11.11/`.
+Community SSO 4.3.0 is active and explicitly links existing Authelia subjects to
+existing Jellyfin IDs. Automatic account creation/linking is disabled; native
+policies and passwords remain intact. `configure-jellyfin-sso.py` reproduces this.
+The stock login page still needs the SSO entry URL; a root page response alone is
+not evidence of automatic login. Future media enrollment must also run this
+configuration helper to establish the explicit subject link.
 
-Proxy configuration is read through Docker so root-owned files remain accessible
-to the maintenance script. The private NZBGet credential include stays mode 600;
-non-secret proxy snippets are mode 644. A route root may perform a harmless local
-redirect before Nginx's access phase; auth checks follow only same-host redirects
-and require the destination to reach central sign-in.
-
-Policy changes recreate Authelia only when its generated configuration changes;
-ordinary repeated preparation does not discard sessions. Sessions use in-memory
-storage, so a real policy restart will require sign-in again.
+Moonbase 2.2.0.0 is installed alongside stock Jellyfin for the Moonfin client.
+See [the unified media rollout](unified-media.md). It does not make all remaining
+native apps SSO. Unattended maintenance credentials have their own
+[agent access contract](agents/credentials.md#unattended-agent-access-prepared-not-activated).

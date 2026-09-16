@@ -135,7 +135,7 @@ services:
       retries: 3
       start_period: 7200s
 
-  # ─── CREATIVE STORAGE AND SMART HOME ────────────────
+  # ─── LOCAL STORAGE AND SMART HOME ────────────────
   creative-init:
     image: home-server/samba:local
     build: ./containers/samba
@@ -189,8 +189,6 @@ services:
     read_only: true
     entrypoint: ["/bin/filebrowser"]
     command: ["--config", "/config/settings.json"]
-    ports:
-      - "127.0.0.1:8082:8080"
     volumes:
       - type: bind
         source: ./config/filebrowser/catalog
@@ -237,7 +235,7 @@ services:
       - ${SERVER_DATA_DIR:-/mnt/server}/filebrowser:/database
       - ./config/filebrowser/settings.json:/config/settings.json:ro
     networks:
-      - proxy
+      - files_auth
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
@@ -420,6 +418,7 @@ services:
     networks:
       - proxy
       - canvas
+      - files_auth
 
   dnsmasq:
     image: jpillora/dnsmasq@sha256:98b69ad825942089fb7c4b9153e3c5af0205eda3a103c691e30b1a13fd912830
@@ -470,9 +469,10 @@ services:
     volumes:
       - ${SERVER_DATA_DIR:-/mnt/server}/homarr/appdata:/appdata
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - ${HOME_SERVER_SECRETS_DIR}/authelia/homarr-oidc.env
     environment:
       - TZ=America/Edmonton
-      - AUTH_PROVIDER=credentials
       - AUTH_SECRET=${HOMARR_AUTH_SECRET}
       - SECRET_ENCRYPTION_KEY=${HOMARR_ENCRYPTION_KEY}
     networks:
@@ -539,7 +539,7 @@ services:
 
   # ─── MEDIA STREAMING ───────────────────────────────
   jellyfin:
-    image: ghcr.io/linuxserver/jellyfin@sha256:4ee07757abcaa0b74fbc74179392311dc2874c03b0bef04bc2d79e9e1a875793
+    image: ghcr.io/linuxserver/jellyfin:10.11.11@sha256:438e44330078e6b1a810fdec9dc0f4773e6595edb137c5eb4417a516da4c7f0e
     container_name: jellyfin
     runtime: nvidia
     environment:
@@ -719,6 +719,8 @@ secrets:
     file: ${HOME_SERVER_SECRETS_DIR:-/home/egouda/.config/home-server/secrets}/creative_password
 
 networks:
+  files_auth:
+    internal: true
   canvas:
     external: true
     name: home-canvas

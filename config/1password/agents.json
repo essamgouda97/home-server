@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "account": "colab-software.1password.com",
+  "vault": "Home Server Agents",
+  "items": {},
+  "status": "Blocked: account returned HTTP 403 creating the dedicated vault on 2026-09-16. Employee vault cannot be used by service accounts."
+}

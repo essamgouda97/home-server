@@ -24,15 +24,19 @@ with tempfile.TemporaryDirectory(prefix='auth-recovery-') as folder:
     with sqlite3.connect('file:/srv/mergerfs/ssd/authelia/db.sqlite3?mode=ro',uri=True) as source,sqlite3.connect(dest/'db.sqlite3') as target:
         source.backup(target)
         assert target.execute('PRAGMA quick_check').fetchone()[0]=='ok'
-    (dest/'manifest.json').write_text(json.dumps({'scope':'central authentication only','sqlite_databases':1}))
+    with sqlite3.connect('file:/mnt/server/homarr/appdata/db/db.sqlite?mode=ro',uri=True) as source,sqlite3.connect(dest/'homarr.sqlite3') as target:
+        source.backup(target)
+        assert target.execute('PRAGMA quick_check').fetchone()[0]=='ok'
+    (dest/'manifest.json').write_text(json.dumps({'scope':'central authentication and Homarr identity links','sqlite_databases':2}))
     with tarfile.open(fileobj=sys.stdout.buffer,mode='w|') as archive:
         archive.add(dest/'manifest.json',arcname='recovery/manifest.json')
         archive.add(dest/'db.sqlite3',arcname='recovery/authelia/db.sqlite3')
+        archive.add(dest/'homarr.sqlite3',arcname='recovery/homarr/db.sqlite3')
         private=Path.home()/'.config/home-server/secrets/authelia'
-        for name in ['configuration.yml','users.yml','jwt_secret','session_secret','storage_key']:
+        for name in ['configuration.yml','users.yml','jwt_secret','session_secret','storage_key','oidc.json','homarr-oidc.env','grafana-oidc.env']:
             archive.add(private/name,arcname='recovery/secrets/authelia/'+name)
         root=Path.home()/'workspace/home-server'
-        for name in ['compose.auth.yml','server.conf','config/services.json']:
+        for name in ['compose.auth.yml','server.conf','config/services.json','config/identities.json','scripts/oidc_config.py','scripts/identity_policy.py']:
             archive.add(root/name,arcname='recovery/infrastructure/'+name)
 '''
     source=subprocess.Popen(['ssh','home-server','python3','-c',shlex.quote(worker)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)

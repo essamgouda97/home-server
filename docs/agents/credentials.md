@@ -71,3 +71,54 @@ with one password-manager-compatible portal. It is live across all registered HT
 Use the saved/read-verified `auth` vault item for that portal; keep existing
 app-specific items for native forms and recovery until their identity adapters are
 actually migrated. Never mark a native app as SSO just because it has a gateway.
+
+## Unattended agent access (prepared, not activated)
+
+The owner requested fewer authorization prompts on September 16. Official
+1Password service accounts support this, with read-only access to a dedicated
+**Home Server Agents** vault. Creation returned HTTP 403 with the current work
+account. No vault or service account was created, and no work-account permissions
+were changed. Service accounts cannot access the built-in Employee vault.
+
+An account administrator must grant permission to create the dedicated vault and
+service account, or provision them. Do not copy owner logins, recovery codes,
+Cloudflare root credentials, or unrelated employer items into this vault.
+Populate it with dedicated per-service API tokens: monitoring read-only by default;
+request/download changes only for agents assigned those operations. An app with
+only an administrator API key must be labeled explicitly as administrative.
+Do not bypass the browser gateway based on a header's presence; use the private
+network and each application's real API authentication, or a validated machine
+identity endpoint.
+
+Prepared command contract (currently fails closed):
+
+```sh
+python3 scripts/vault.py --agent status
+python3 scripts/vault.py --agent verify SERVICE
+python3 scripts/vault.py --agent exec SERVICE -- python3 scripts/APP_CHECK.py
+```
+
+After provisioning, record only vault/item IDs in `config/1password/agents.json`
+and `config/1password/agents/SERVICE.refs`; API references use
+`HOME_SERVICE_API_TOKEN=op://VAULT/ITEM/FIELD`. Enable the catalog only after a
+positive read test and a negative test proving Employee access is denied.
+Supply `OP_SERVICE_ACCOUNT_TOKEN` from an OS credential store or protected job
+secret mechanism. Never put it in `.zshrc`, Git, shell arguments or chat. Save the
+bootstrap token in the owner's vault for recovery; choose a finite expiry and
+record renewal ownership. This setup does not require a new daemon or unofficial MCP.
+
+The child launcher removes all `OP_*` variables before starting the workload.
+`op run` retains its default output masking. This reduces accidental disclosure;
+it is not a sandbox against an agent with unrestricted access to the host.
+Never dump environment variables or log authenticated response bodies. Agents
+must not receive personal browser sessions as a substitute for an API identity.
+Use separate read-only and administrative vaults/tokens when those agent roles
+must be isolated: a service account's vault permissions are the real boundary.
+
+Routine reads use the scoped token without desktop prompts. Initial provisioning,
+renewal/revocation, new privilege grants and personal MFA remain human-controlled.
+Service-account creation permissions are immutable; replace the account to change
+its scope. Existing interactive desktop commands remain available explicitly;
+agent mode never silently falls back to broader desktop authorization.
+
+Reference: [official service-account requirements and limitations](https://www.1password.dev/service-accounts/get-started).

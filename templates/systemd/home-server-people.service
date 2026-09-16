@@ -1,0 +1,15 @@
+[Unit]
+Description=Home Server People owner console and invitation endpoint
+After=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/workspace/home-server
+ExecStart=/usr/bin/python3 %h/workspace/home-server/services/people/server.py
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

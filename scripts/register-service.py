@@ -22,5 +22,5 @@ catalog['services']=[s for s in catalog['services'] if s['id']!=a.id]+[entry]
 file.write_text(json.dumps(catalog,indent=2)+'\n')
 if a.sync:
  subprocess.run(['rsync','-a',str(file),'home-server:workspace/home-server/config/services.json'],check=True)
- subprocess.run(['ssh','home-server','cd ~/workspace/home-server && python3 scripts/prepare-auth.py && python3 scripts/configure-auth-proxies.py && python3 scripts/check-auth.py && python3 scripts/sync-service-catalog.py && systemctl --user start home-server-metrics.service'],check=True)
+ subprocess.run(['ssh','home-server','cd ~/workspace/home-server && python3 scripts/prepare-auth.py && python3 scripts/configure-auth-proxies.py && python3 scripts/check-auth.py && python3 scripts/sync-service-catalog.py && python3 scripts/provision-homarr-identities.py && systemctl --user start home-server-metrics.service'],check=True)
 print('Registered:',a.id,'— commit the catalog change after verification.')

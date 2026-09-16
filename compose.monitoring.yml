@@ -8,6 +8,8 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     mem_limit: 768m
+    env_file:
+      - /home/egouda/.config/home-server/secrets/authelia/grafana-oidc.env
     environment:
       GF_SERVER_ROOT_URL: https://metrics.home.egouda.xyz
       GF_SECURITY_ADMIN_USER: egouda

@@ -78,6 +78,16 @@ def render(text, policies=None):
         # NZBGet requires Basic auth upstream; inject only after gateway authorization.
         if hosts==['nzbget.home.egouda.xyz']:
             body=body.replace('include '+INCLUDE+'/identity.conf;', 'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/nzbget.conf;')
+        if hosts==['coach.home.egouda.xyz']:
+            # Exact machine routes require the app's constant-time Bearer key
+            # check. All browser routes retain the household gateway policy.
+            for endpoint in ('context','snapshot','events'):
+                body+='\n    location = /api/device/'+endpoint+' {\n        auth_request off;\n        include '+INCLUDE+'/identity.conf;\n        set $coach_device_backend http://health-coach:8099;\n        proxy_pass $coach_device_backend;\n        proxy_set_header Host $host;\n        proxy_set_header X-Forwarded-Proto https;\n    }\n'
+        if hosts==['people.home.egouda.xyz']:
+            # The only unauthenticated browser path is a one-use bearer invite.
+            # The backend validates its 256-bit token and never accepts client
+            # identity headers on this route.
+            body+='\n    location /join/ {\n        auth_request off;\n        include /data/nginx/custom/home-server/people-key.conf;\n        proxy_set_header Host $host;\n        proxy_set_header Remote-User "";\n        proxy_set_header Remote-Groups "";\n        proxy_set_header X-Forwarded-Proto https;\n        proxy_pass http://172.18.0.1:8766;\n        proxy_read_timeout 190s;\n    }\n'
         changes.append((start+1,end,body))
     for start,end,body in reversed(changes):text=text[:start]+body+text[end:]
     return text,covered

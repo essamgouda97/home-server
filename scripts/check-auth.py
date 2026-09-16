@@ -43,10 +43,11 @@ def main():
     print('PASS secure HttpOnly shared cookie and server-side logout revocation')
     import subprocess, re, yaml
     identities=yaml.safe_load((Path.home()/'.config/home-server/secrets/authelia/users.yml').read_text())['users']
-    assert identities['mgouda']['groups']==['household']
+    from identity_policy import groups, allowed
+    assert identities['mgouda']['groups']==groups('mgouda')
     for host,entry in services().items():
-        expected='one_factor' if entry['auth']['access']=='household' else 'deny'
-        result=subprocess.run(['docker','exec','home-authelia','authelia','access-control','check-policy','--config','/config/configuration.yml','--username','mgouda','--groups','household','--url',entry['url']],capture_output=True,text=True,check=True)
+        expected='one_factor' if allowed('mgouda',entry['id']) else 'deny'
+        result=subprocess.run(['docker','exec','home-authelia','authelia','access-control','check-policy','--config','/config/configuration.yml','--username','mgouda','--groups',','.join(groups('mgouda')),'--url',entry['url']],capture_output=True,text=True,check=True)
         assert "The policy '"+expected+"'" in result.stdout,entry['id']+' household policy mismatch'
     print('PASS Mariam household access and owner-only denial across all registered apps')
 

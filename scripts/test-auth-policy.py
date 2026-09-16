@@ -27,3 +27,21 @@ native='server {\n listen 80;\n server_name jellyfin.lan;\n location / { proxy_p
 r,_=render(native,p)
 assert '# home-auth-native-client' in r and 'auth_request off;' in r
 print('PASS default deny, unknown-route rejection, legacy redirects, native-client isolation and repeatable rendering')
+
+coach=source.replace('life.home.egouda.xyz','coach.home.egouda.xyz')
+r,_=render(coach,{'coach.home.egouda.xyz':{}})
+assert r.count('auth_request off;')==3
+for endpoint in ('context','snapshot','events'):
+ assert 'location = /api/device/'+endpoint+' {' in r
+assert 'location /api/device/' not in r
+assert render(r,{'coach.home.egouda.xyz':{}})[0]==r
+print('PASS Coach machine exceptions are exact, bounded and repeatable')
+
+people=source.replace('life.home.egouda.xyz','people.home.egouda.xyz')
+r,_=render(people,{'people.home.egouda.xyz':{}})
+assert r.count('auth_request off;')==1
+assert 'location /join/ {' in r
+assert 'proxy_set_header Remote-User "";' in r
+assert 'include '+"/data/nginx/custom/home-auth/identity.conf;" in r
+assert render(r,{'people.home.egouda.xyz':{}})[0]==r
+print('PASS People owner gateway and exact invitation subtree')

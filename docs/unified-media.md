@@ -1,5 +1,8 @@
 # Unified household media
 
+For step-by-step family and device setup, use the
+[household onboarding runbook](household-onboarding.md).
+
 ## Target experience
 
 Moonfin is the selected additive client trial: search/discover, request, monitor
