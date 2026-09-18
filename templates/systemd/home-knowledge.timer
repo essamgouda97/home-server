@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh home knowledge every 30 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=home-knowledge.service
+
+[Install]
+WantedBy=timers.target

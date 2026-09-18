@@ -1,0 +1,12 @@
+[Unit]
+Description=Update the owner-only home knowledge index
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/egouda/workspace/home-server/scripts/home-knowledge.py sync
+TimeoutStartSec=20min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/egouda/.local/share/home-server

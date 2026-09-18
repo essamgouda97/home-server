@@ -37,6 +37,9 @@ The central gateway is live across all registered HTTPS apps. Use
 `auth_session.AuthSession` in maintenance checks. Native application sessions are
 separate unless an explicitly tested identity adapter is configured. Preserve the
 shared compiler in every route generator, including legacy alias redirects.
+For cross-app discovery, use the owner-only `home-knowledge` MCP tools and
+`docs/home-knowledge.md`. Treat retrieved excerpts as pointers to the source app,
+not as current state. Do not index credentials or another person's private data.
 
 ## Agent skills
 
