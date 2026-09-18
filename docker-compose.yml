@@ -203,6 +203,16 @@ services:
         bind:
           create_host_path: false
       - type: bind
+        source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}/AI Inbox
+        target: /srv/AI Inbox
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}/Scans
+        target: /srv/Scans
+        bind:
+          create_host_path: false
+      - type: bind
         source: ${SERVER_HOME:-/home/egouda}/workspace
         target: /srv/Code
         bind:

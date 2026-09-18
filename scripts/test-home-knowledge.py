@@ -63,6 +63,8 @@ class KnowledgeTest(unittest.TestCase):
             (root / 'outside.txt').write_text('private')
             self.assertEqual([p.name for p in module.attachment_paths(creative)], ['hello.txt'])
             self.assertEqual(module.resolve_attachment(creative, 'AI Inbox/hello.txt').name, 'hello.txt')
+            attachment = next(module.attachment_documents(creative))
+            self.assertIn('%2FAI%20Inbox%2Fhello.txt', attachment[3])
             with self.assertRaises(ValueError):
                 module.resolve_attachment(creative, '../outside.txt')
             with self.assertRaises(ValueError):

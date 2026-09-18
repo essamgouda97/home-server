@@ -190,7 +190,7 @@ def attachment_paths(creative: Path):
 def attachment_documents(creative: Path):
     for path in attachment_paths(creative):
         relative = path.relative_to(creative).as_posix()
-        url = 'https://files.home.egouda.xyz/preview/?file=' + quote('/Creative/' + relative, safe='')
+        url = 'https://files.home.egouda.xyz/preview/?file=' + quote('/' + relative, safe='')
         body = f'Attachment: {path.name}\nFolder: {path.parent.name}\nType: {path.suffix.lower()}\n'
         if path.suffix.lower() in {'.txt', '.md'}:
             try:

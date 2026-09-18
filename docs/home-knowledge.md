@@ -33,11 +33,13 @@ authoritative. The index can be deleted and rebuilt without deleting originals.
 
 ## Send a photo or scan from any device
 
-- On a phone or computer, open [Local Drive → AI Inbox](https://files.home.egouda.xyz/files/Creative/AI%20Inbox/) and upload a photo, PDF or text file. The owner sign-in is required. This is an ordinary SSD folder, not a public share.
+- On a phone or computer, open [Local Drive → AI Inbox](https://files.home.egouda.xyz/files/AI%20Inbox/) and upload a photo, PDF or text file. The owner sign-in is required. This is an ordinary SSD folder, not a public share.
 - For a paper document, use [Brother · Documents](https://print.home.egouda.xyz/documents/) → **Scan to PDF**. Completed scans appear in Local Drive → Scans; partial scans are excluded.
 - In a Codex session, ask for the latest AI Inbox item or scan. The agent can call `list_home_attachments` immediately and `open_home_attachment` to view a photo or PDF page. Searchable text arrives on the next index sync. Image-only PDFs can be viewed page by page but do not yet have OCR text.
 
-The file stays in Local Drive and is available from every device through the same
+AI Inbox and Scans are top-level Local Drive folders. Their backing directories
+remain under the SSD's historical `Creative` path; these are bind-mount aliases,
+not copies. The file stays in Local Drive and is available from every device through the same
 private HTTPS address. Each LLM application needs its own MCP integration or a
 supported file picker; uploading here does not automatically inject the image
 into every existing chat session. The current Codex integration is the tested
