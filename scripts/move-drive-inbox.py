@@ -51,6 +51,8 @@ def main():
         raise SystemExit('Drive/Creative exists; inspect before moving')
     if CREATIVE.stat().st_dev != DRIVE.parent.stat().st_dev:
         raise SystemExit('Source and destination are on different filesystems')
+    if not DRIVE.exists() and not os.access(DRIVE.parent, os.W_OK):
+        raise SystemExit('Create the drive root first: sudo install -d -m 700 -o egouda -g egouda /srv/mergerfs/ssd/drive')
     for service in SERVICES:
         status = subprocess.run(['docker', 'inspect', '-f', '{{.State.Running}}', service],
                                 capture_output=True, text=True)

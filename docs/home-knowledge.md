@@ -56,7 +56,10 @@ path. No public share link is created.
 ### Existing server migration
 
 When upgrading from the earlier `Creative/AI Inbox` and `Creative/Scans` layout,
-stop File Browser, Samba and `home-print-documents`; then run
+create the drive root with
+`sudo install -d -m 700 -o egouda -g egouda /srv/mergerfs/ssd/drive`.
+Run `python3 scripts/move-drive-inbox.py` as a preflight. Then stop File Browser,
+Samba and `home-print-documents`; run
 `python3 scripts/move-drive-inbox.py --apply` on the server before recreating
 those containers. The script makes a verified private backup outside Git and
 keeps `Creative/Scans` as a scanner compatibility symlink. It refuses an active
