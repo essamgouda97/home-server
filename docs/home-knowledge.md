@@ -33,6 +33,9 @@ authoritative. The index can be deleted and rebuilt without deleting originals.
 
 ## Send a photo or scan from any device
 
+See the [device setup guide](ai-inbox-devices.md) for iPhone Files, a Home Screen
+shortcut, and Mac screenshot options.
+
 - On a phone or computer, open [Local Drive → AI Inbox](https://files.home.egouda.xyz/files/AI%20Inbox/) and upload a photo, PDF or text file. The owner sign-in is required. This is an ordinary SSD folder, not a public share.
 - For a paper document, use [Brother · Documents](https://print.home.egouda.xyz/documents/) → **Scan to PDF**. Completed scans appear in Local Drive → Scans; partial scans are excluded.
 - In a Codex session, ask for the latest AI Inbox item or scan. The agent can call `list_home_attachments` immediately and `open_home_attachment` to view a photo or PDF page. Searchable text arrives on the next index sync. Image-only PDFs can be viewed page by page but do not yet have OCR text.
@@ -50,11 +53,15 @@ path. No public share link is created.
 On the server, after updating the repository:
 
 The host needs Python SQLite FTS5, Pillow (`python3-pil`), and Poppler
-(`poppler-utils`). The current server has all three.
+(`poppler-utils`). The current server has all three. HEIC/HEIF previews use a
+small, isolated Python environment with pinned dependencies.
 
 ```sh
 cd ~/workspace/home-server
 install -d -m 700 '/srv/mergerfs/ssd/creative/AI Inbox'
+install -d -m 700 ~/.local/share/home-server/knowledge
+python3 -m venv ~/.local/share/home-server/knowledge/venv
+~/.local/share/home-server/knowledge/venv/bin/python -m pip install -r config/knowledge/requirements.txt
 python3 scripts/test-home-knowledge.py
 python3 scripts/home-knowledge.py sync
 python3 scripts/home-knowledge.py search 'where are Draw boards stored' --limit 3

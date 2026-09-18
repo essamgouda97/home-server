@@ -31,7 +31,7 @@ EMBED_URL = 'http://127.0.0.1:8090/embed'
 TEXT_SUFFIXES = {'.md', '.txt'}
 SKIP_NAMES = {'AGENTS.md', 'MEMORY.md', 'SOUL.md', 'USER.md', 'TOOLS.md', 'BOOTSTRAP.md'}
 SENSITIVE = re.compile(r'(?i)(password\s*[:=]|api[_ -]?key\s*[:=]|secret\s*[:=]|token\s*[:=]|-----BEGIN [A-Z ]*PRIVATE KEY-----|op://)')
-ATTACHMENT_SUFFIXES = {'.jpg', '.jpeg', '.png', '.webp', '.pdf', '.txt', '.md'}
+ATTACHMENT_SUFFIXES = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.pdf', '.txt', '.md'}
 
 
 def connect(path: Path):
@@ -233,6 +233,11 @@ def attachment_preview(creative: Path, relative: str, page: int = 1):
                             '-scale-to', '1600', '-singlefile', '-png', str(path), str(output)],
                            capture_output=True, timeout=30, check=True)
             data, mime = output.with_suffix('.png').read_bytes(), 'image/png'
+    elif path.suffix.lower() in {'.heic', '.heif'}:
+        converter = Path.home() / '.local/share/home-server/knowledge/venv/bin/python'
+        result = subprocess.run([str(converter), str(Path(__file__).with_name('heic-preview.py')),
+                                 str(path)], capture_output=True, timeout=30, check=True)
+        data, mime = result.stdout, 'image/jpeg'
     elif path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp'}:
         from PIL import Image
         with Image.open(path) as original:

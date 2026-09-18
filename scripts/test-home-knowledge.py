@@ -83,6 +83,8 @@ class KnowledgeTest(unittest.TestCase):
             self.assertEqual(block['type'], 'image')
             self.assertEqual(block['mimeType'], 'image/jpeg')
             self.assertTrue(block['data'])
+            (inbox / 'iphone.heic').write_bytes(b'heic fixture')
+            self.assertIn('iphone.heic', [p.name for p in module.attachment_paths(creative)])
 
 if __name__ == '__main__':
     unittest.main()
