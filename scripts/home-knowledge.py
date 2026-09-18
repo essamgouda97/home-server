@@ -152,15 +152,37 @@ def service_documents(repo: Path):
 
 
 def embed(text: str):
-    request = urllib.request.Request(EMBED_URL, json.dumps({'inputs': text[:3000]}).encode(),
+    return embed_many([text])[0]
+
+
+def embed_many(texts: list[str]):
+    request = urllib.request.Request(EMBED_URL, json.dumps({'inputs': [t[:3000] for t in texts]}).encode(),
                                      {'Content-Type': 'application/json'})
     with urllib.request.urlopen(request, timeout=30) as response:
-        vector = json.load(response)[0]
-    return array.array('f', vector).tobytes()
+        vectors = json.load(response)
+    if len(vectors) != len(texts):
+        raise RuntimeError('embedding response count mismatch')
+    return [array.array('f', vector).tobytes() for vector in vectors]
 
 
 def sync(db, repo: Path, draw: Path, use_embeddings: bool = True):
-    seen, changed = set(), 0
+    seen, changed, pending = set(), 0, []
+    def flush():
+        nonlocal changed
+        if not pending:
+            return
+        vectors = embed_many([item[4] for item in pending]) if use_embeddings else [None] * len(pending)
+        for doc, vector in zip(pending, vectors):
+            did, source, title, url, body, updated, digest = doc
+            db.execute('''INSERT INTO documents(id,source,title,url,body,digest,embedding,updated_at)
+                VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+                source=excluded.source,title=excluded.title,url=excluded.url,body=excluded.body,
+                digest=excluded.digest,embedding=excluded.embedding,updated_at=excluded.updated_at''',
+                       (did, source, title, url, body, digest, vector, updated))
+            changed += 1
+        db.commit()
+        pending.clear()
+
     for doc in [*repo_documents(repo), *draw_documents(draw), *service_documents(repo)]:
         did, source, title, url, body, updated = doc
         if not body.strip():
@@ -170,13 +192,10 @@ def sync(db, repo: Path, draw: Path, use_embeddings: bool = True):
         previous = db.execute('SELECT digest,embedding FROM documents WHERE id=?', (did,)).fetchone()
         if previous and previous[0] == digest and (previous[1] or not use_embeddings):
             continue
-        vector = embed(body) if use_embeddings else None
-        db.execute('''INSERT INTO documents(id,source,title,url,body,digest,embedding,updated_at)
-            VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
-            source=excluded.source,title=excluded.title,url=excluded.url,body=excluded.body,
-            digest=excluded.digest,embedding=excluded.embedding,updated_at=excluded.updated_at''',
-                   (*doc[:4], body, digest, vector, updated))
-        changed += 1
+        pending.append((*doc, digest))
+        if len(pending) >= 16:
+            flush()
+    flush()
     for (did,) in db.execute('SELECT id FROM documents').fetchall():
         if did not in seen:
             db.execute('DELETE FROM documents WHERE id=?', (did,))
