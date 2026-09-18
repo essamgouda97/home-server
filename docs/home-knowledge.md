@@ -47,8 +47,12 @@ path. No public share link is created.
 
 On the server, after updating the repository:
 
+The host needs Python SQLite FTS5, Pillow (`python3-pil`), and Poppler
+(`poppler-utils`). The current server has all three.
+
 ```sh
 cd ~/workspace/home-server
+install -d -m 700 '/srv/mergerfs/ssd/creative/AI Inbox'
 python3 scripts/test-home-knowledge.py
 python3 scripts/home-knowledge.py sync
 python3 scripts/home-knowledge.py search 'where are Draw boards stored' --limit 3
