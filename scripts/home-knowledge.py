@@ -287,8 +287,12 @@ def sync(db, repo: Path, draw: Path, creative: Path, use_embeddings: bool = True
             continue
         seen.add(did)
         digest = hashlib.sha256(body.encode()).hexdigest()
-        previous = db.execute('SELECT digest,embedding FROM documents WHERE id=?', (did,)).fetchone()
+        previous = db.execute('SELECT digest,embedding,source,title,url,updated_at FROM documents WHERE id=?', (did,)).fetchone()
         if previous and previous[0] == digest and (previous[1] or not use_embeddings):
+            if previous[2:] != (source, title, url, updated):
+                db.execute('UPDATE documents SET source=?,title=?,url=?,updated_at=? WHERE id=?',
+                           (source, title, url, updated, did))
+                changed += 1
             continue
         pending.append((*doc, digest))
         if len(pending) >= 16:

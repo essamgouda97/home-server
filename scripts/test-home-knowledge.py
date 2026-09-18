@@ -65,6 +65,14 @@ class KnowledgeTest(unittest.TestCase):
             self.assertEqual(module.resolve_attachment(creative, 'AI Inbox/hello.txt').name, 'hello.txt')
             attachment = next(module.attachment_documents(creative))
             self.assertIn('%2FAI%20Inbox%2Fhello.txt', attachment[3])
+            index = module.connect(root / 'private' / 'index.db')
+            repo = root / 'repo'
+            (repo / 'docs').mkdir(parents=True)
+            module.sync(index, repo, root / 'missing.db', creative, False)
+            index.execute("UPDATE documents SET url='stale' WHERE id=?", (attachment[0],))
+            index.commit()
+            module.sync(index, repo, root / 'missing.db', creative, False)
+            self.assertEqual(module.fetch(index, attachment[0])['url'], attachment[3])
             with self.assertRaises(ValueError):
                 module.resolve_attachment(creative, '../outside.txt')
             with self.assertRaises(ValueError):
