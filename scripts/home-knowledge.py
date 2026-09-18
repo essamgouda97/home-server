@@ -23,7 +23,7 @@ import tempfile
 import urllib.request
 from urllib.parse import quote
 
-DEFAULT_DB = Path.home() / '.local/share/home-server/knowledge.sqlite3'
+DEFAULT_DB = Path.home() / '.local/share/home-server/knowledge/index.sqlite3'
 DEFAULT_REPO = Path.home() / 'workspace/home-server'
 DEFAULT_DRAW = Path('/srv/mergerfs/ssd/excalidraw/excalidraw.db')
 DEFAULT_CREATIVE = Path('/srv/mergerfs/ssd/creative')

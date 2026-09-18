@@ -9,4 +9,4 @@ TimeoutStartSec=20min
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/home/egouda/.local/share/home-server
+ReadWritePaths=/home/egouda/.local/share/home-server/knowledge

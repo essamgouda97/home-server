@@ -2,7 +2,7 @@
 
 `home-knowledge.py` gives the owner one read-only retrieval tool for agents. It runs
 on `home-server`, stores a private SQLite full-text and local-embedding index under
-`~/.local/share/home-server/knowledge.sqlite3`, and uses the existing ODS
+`~/.local/share/home-server/knowledge/index.sqlite3`, and uses the existing ODS
 `BAAI/bge-base-en-v1.5` embedding server bound to loopback. It does not call a
 hosted embedding API or need an LLM to index content. Codex generates answers from
 retrieved excerpts and should cite the original link, not the index as authority.
