@@ -9,8 +9,9 @@ retrieved excerpts and should cite the original link, not the index as authority
 
 This is the first working slice of cross-app search. It indexes repository README
 and docs, registered service names/URLs/access class, and text from active Draw
-boards. It does **not** yet index files in Creative/Local Drive, Life Dashboard,
-Jellyfin, Requests, Home Assistant, mail, chats, photos, video, or app databases.
+boards, owner-selected AI Inbox uploads, and completed Brother scans. It does
+**not** yet index other Creative/Local Drive files, Life Dashboard, Jellyfin,
+Requests, Home Assistant, mail, chats, video, or other app databases.
 Do not describe it as a complete memory of the owner. In particular, a missed
 result is not evidence that the information is absent from the original app.
 
@@ -29,6 +30,18 @@ review new connectors and their sample output before enabling them.
 Source IDs and URLs accompany each result. Deleted boards/elements or documents
 are removed on the next sync; changed text is re-embedded. Source databases remain
 authoritative. The index can be deleted and rebuilt without deleting originals.
+
+## Send a photo or scan from any device
+
+- On a phone or computer, open [Local Drive → AI Inbox](https://files.home.egouda.xyz/files/Creative/AI%20Inbox/) and upload a photo, PDF or text file. The owner sign-in is required. This is an ordinary SSD folder, not a public share.
+- For a paper document, use [Brother · Documents](https://print.home.egouda.xyz/documents/) → **Scan to PDF**. Completed scans appear in Local Drive → Scans; partial scans are excluded.
+- In a Codex session, ask for the latest AI Inbox item or scan. The agent can call `list_home_attachments` immediately and `open_home_attachment` to view a photo or PDF page. Searchable text arrives on the next index sync. Image-only PDFs can be viewed page by page but do not yet have OCR text.
+
+The file stays in Local Drive and is available from every device through the same
+private HTTPS address. Each LLM application needs its own MCP integration or a
+supported file picker; uploading here does not automatically inject the image
+into every existing chat session. The current Codex integration is the tested
+path. No public share link is created.
 
 ## Install and operate
 
@@ -53,9 +66,11 @@ codex mcp add home-knowledge -- ssh -T home-server \
 ```
 
 Codex on the server can register the same MCP command with `/usr/bin/python3`
-without SSH. New Codex sessions see `search_home_knowledge` and
-`read_home_knowledge`. Search returns a small excerpt, source, URL, and source
-update time. Read expands a single ID. Both are read-only; they cannot modify
+without SSH. New Codex sessions see `search_home_knowledge`,
+`read_home_knowledge`, `list_home_attachments`, and `open_home_attachment`.
+Search returns a small excerpt, source, URL, and source update time. Read expands
+a single ID. The attachment tools list files live and return scaled previews.
+All tools are read-only; they cannot modify
 source apps or grant access. If the embedding service is unavailable, searches
 still use SQLite full-text, and syncing waits for embeddings rather than silently
 writing a partially semantic index. To rebuild from scratch, move the SQLite file

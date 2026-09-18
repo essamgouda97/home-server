@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from PIL import Image
 
 spec = importlib.util.spec_from_file_location('home_knowledge', Path(__file__).with_name('home-knowledge.py'))
 module = importlib.util.module_from_spec(spec)
@@ -19,14 +20,14 @@ class KnowledgeTest(unittest.TestCase):
             doc = repo / 'docs' / 'storage.md'
             doc.write_text('Draw boards live on the SSD.\npassword = private-value\n')
             db = module.connect(root / 'private' / 'index.sqlite3')
-            result = module.sync(db, repo, root / 'missing.db', False)
+            result = module.sync(db, repo, root / 'missing.db', root / 'creative', False)
             self.assertEqual(result['documents'], 1)
             match = module.search(db, 'Draw boards SSD')[0]
             self.assertIn('SSD', match['excerpt'])
             self.assertNotIn('private-value', match['excerpt'])
             self.assertIsNone(db.execute('SELECT embedding FROM documents').fetchone()[0])
             doc.unlink()
-            module.sync(db, repo, root / 'missing.db', False)
+            module.sync(db, repo, root / 'missing.db', root / 'creative', False)
             self.assertEqual(module.search(db, 'Draw'), [])
 
     def test_draw_board_is_indexed_without_deleted_elements(self):
@@ -45,11 +46,33 @@ class KnowledgeTest(unittest.TestCase):
             ''')
             db.close()
             index = module.connect(root / 'private' / 'index.db')
-            module.sync(index, repo, draw, False)
+            module.sync(index, repo, draw, root / 'creative', False)
             match = module.search(index, 'SSD boards')[0]
             self.assertEqual(match['source'], 'draw')
             self.assertEqual(match['url'], 'https://draw.home.egouda.xyz/?board=board-1')
             self.assertNotIn('Deleted secret', module.fetch(index, match['id'])['text'])
+
+    def test_attachment_allowlist_and_symlink_escape(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            creative = root / 'creative'
+            inbox = creative / 'AI Inbox'
+            inbox.mkdir(parents=True)
+            (inbox / 'hello.txt').write_text('Photo notes from phone')
+            (inbox / 'escape.txt').symlink_to(root / 'outside.txt')
+            (root / 'outside.txt').write_text('private')
+            self.assertEqual([p.name for p in module.attachment_paths(creative)], ['hello.txt'])
+            self.assertEqual(module.resolve_attachment(creative, 'AI Inbox/hello.txt').name, 'hello.txt')
+            with self.assertRaises(ValueError):
+                module.resolve_attachment(creative, '../outside.txt')
+            with self.assertRaises(ValueError):
+                module.resolve_attachment(creative, 'AI Inbox/escape.txt')
+            photo = inbox / 'phone.jpg'
+            Image.new('RGB', (2400, 1200), '#2854aa').save(photo)
+            block = module.attachment_preview(creative, 'AI Inbox/phone.jpg')
+            self.assertEqual(block['type'], 'image')
+            self.assertEqual(block['mimeType'], 'image/jpeg')
+            self.assertTrue(block['data'])
 
 if __name__ == '__main__':
     unittest.main()
