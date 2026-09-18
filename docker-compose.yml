@@ -169,6 +169,11 @@ services:
         target: /shares/Creative
         bind:
           create_host_path: false
+      - type: bind
+        source: /srv/mergerfs/ssd/drive/AI Inbox
+        target: /shares/AI Inbox
+        bind:
+          create_host_path: false
       - ./config/samba/smb.conf:/etc/samba/smb.conf:ro
       - ${SERVER_DATA_DIR:-/mnt/server}/samba:/var/lib/samba
     secrets:
@@ -203,12 +208,12 @@ services:
         bind:
           create_host_path: false
       - type: bind
-        source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}/AI Inbox
+        source: /srv/mergerfs/ssd/drive/AI Inbox
         target: /srv/AI Inbox
         bind:
           create_host_path: false
       - type: bind
-        source: ${CREATIVE_ROOT:-/srv/mergerfs/ssd/creative}/Scans
+        source: /srv/mergerfs/ssd/drive/Scans
         target: /srv/Scans
         bind:
           create_host_path: false

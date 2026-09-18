@@ -1,6 +1,6 @@
 # Send photos, screenshots and scans to AI Inbox
 
-AI Inbox is a top-level folder in [Local Drive](https://files.home.egouda.xyz/files/AI%20Inbox/), next to Creative and Scans. Its existing SSD backing directory is `/srv/mergerfs/ssd/creative/AI Inbox`; the web folder and SMB share are two views of the same files. No sync copy or public link is involved. Owner access only.
+AI Inbox is a top-level folder in [Local Drive](https://files.home.egouda.xyz/files/AI%20Inbox/), next to Creative and Scans. Its SSD backing directory is `/srv/mergerfs/ssd/drive/AI Inbox`, beside the Creative directory. The web folder and SMB share are two views of the same files. No sync copy or public link is involved. Owner access only.
 
 ## iPhone
 

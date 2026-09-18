@@ -26,7 +26,7 @@ from urllib.parse import quote
 DEFAULT_DB = Path.home() / '.local/share/home-server/knowledge/index.sqlite3'
 DEFAULT_REPO = Path.home() / 'workspace/home-server'
 DEFAULT_DRAW = Path('/srv/mergerfs/ssd/excalidraw/excalidraw.db')
-DEFAULT_CREATIVE = Path('/srv/mergerfs/ssd/creative')
+DEFAULT_DRIVE = Path('/srv/mergerfs/ssd/drive')
 EMBED_URL = 'http://127.0.0.1:8090/embed'
 TEXT_SUFFIXES = {'.md', '.txt'}
 SKIP_NAMES = {'AGENTS.md', 'MEMORY.md', 'SOUL.md', 'USER.md', 'TOOLS.md', 'BOOTSTRAP.md'}
@@ -158,9 +158,9 @@ def service_documents(repo: Path):
         yield (f'service:{sid}', 'services', name, url, body, str(path.stat().st_mtime_ns))
 
 
-def attachment_paths(creative: Path):
+def attachment_paths(drive: Path):
     for folder in ('AI Inbox', 'Scans'):
-        root = creative / folder
+        root = drive / folder
         if not root.is_dir():
             continue
         for path in root.rglob('*'):
@@ -187,9 +187,9 @@ def attachment_paths(creative: Path):
             yield path
 
 
-def attachment_documents(creative: Path):
-    for path in attachment_paths(creative):
-        relative = path.relative_to(creative).as_posix()
+def attachment_documents(drive: Path):
+    for path in attachment_paths(drive):
+        relative = path.relative_to(drive).as_posix()
         url = 'https://files.home.egouda.xyz/preview/?file=' + quote('/' + relative, safe='')
         body = f'Attachment: {path.name}\nFolder: {path.parent.name}\nType: {path.suffix.lower()}\n'
         if path.suffix.lower() in {'.txt', '.md'}:
@@ -209,21 +209,21 @@ def attachment_documents(creative: Path):
                    chunk, str(path.stat().st_mtime_ns))
 
 
-def resolve_attachment(creative: Path, relative: str):
+def resolve_attachment(drive: Path, relative: str):
     if not relative or relative.startswith('/'):
         raise ValueError('invalid attachment path')
-    path = (creative / relative).resolve()
-    if not any(path.is_relative_to((creative / folder).resolve()) for folder in ('AI Inbox', 'Scans')):
+    path = (drive / relative).resolve()
+    if not any(path.is_relative_to((drive / folder).resolve()) for folder in ('AI Inbox', 'Scans')):
         raise ValueError('attachment outside allowed folders')
     if path.suffix.lower() not in ATTACHMENT_SUFFIXES or not path.is_file():
         raise ValueError('attachment not found')
-    if path not in {item.resolve() for item in attachment_paths(creative)}:
+    if path not in {item.resolve() for item in attachment_paths(drive)}:
         raise ValueError('attachment not eligible')
     return path
 
 
-def attachment_preview(creative: Path, relative: str, page: int = 1):
-    path = resolve_attachment(creative, relative)
+def attachment_preview(drive: Path, relative: str, page: int = 1):
+    path = resolve_attachment(drive, relative)
     if not 1 <= page <= 10:
         raise ValueError('page must be 1 through 10')
     if path.suffix.lower() == '.pdf':
@@ -267,7 +267,7 @@ def embed_many(texts: list[str]):
     return [array.array('f', vector).tobytes() for vector in vectors]
 
 
-def sync(db, repo: Path, draw: Path, creative: Path, use_embeddings: bool = True):
+def sync(db, repo: Path, draw: Path, drive: Path, use_embeddings: bool = True):
     seen, changed, pending = set(), 0, []
     def flush():
         nonlocal changed
@@ -286,7 +286,7 @@ def sync(db, repo: Path, draw: Path, creative: Path, use_embeddings: bool = True
         pending.clear()
 
     for doc in [*repo_documents(repo), *draw_documents(draw), *service_documents(repo),
-                *attachment_documents(creative)]:
+                *attachment_documents(drive)]:
         did, source, title, url, body, updated = doc
         if not body.strip():
             continue
@@ -356,7 +356,7 @@ def fetch(db, did: str):
     return dict(zip(('id','source','title','url','text','updated_at'), row)) if row else None
 
 
-def mcp(db, creative: Path):
+def mcp(db, drive: Path):
     tools = [
       {'name':'search_home_knowledge','description':'Search owner-accessible home server documentation and Draw boards. Results include source links; verify fresh operational state in the source app.',
        'inputSchema':{'type':'object','properties':{'query':{'type':'string'},'limit':{'type':'integer','minimum':1,'maximum':20}},'required':['query']}},
@@ -385,11 +385,11 @@ def mcp(db, creative: Path):
                 elif params.get('name') == 'read_home_knowledge':
                     payload = fetch(db, str(args['id']))
                 elif params.get('name') == 'list_home_attachments':
-                    payload = [{'path':p.relative_to(creative).as_posix(), 'modified':p.stat().st_mtime,
-                                'size':p.stat().st_size} for p in sorted(attachment_paths(creative),
+                    payload = [{'path':p.relative_to(drive).as_posix(), 'modified':p.stat().st_mtime,
+                                'size':p.stat().st_size} for p in sorted(attachment_paths(drive),
                                 key=lambda item:item.stat().st_mtime, reverse=True)[:30]]
                 elif params.get('name') == 'open_home_attachment':
-                    payload = attachment_preview(creative, str(args['path']), int(args.get('page', 1)))
+                    payload = attachment_preview(drive, str(args['path']), int(args.get('page', 1)))
                 else:
                     raise ValueError('unknown tool')
                 result = {'content':[payload] if isinstance(payload, dict) and payload.get('type') == 'image'
@@ -408,7 +408,7 @@ def main():
     parser.add_argument('--db', type=Path, default=DEFAULT_DB)
     parser.add_argument('--repo', type=Path, default=DEFAULT_REPO)
     parser.add_argument('--draw', type=Path, default=DEFAULT_DRAW)
-    parser.add_argument('--creative', type=Path, default=DEFAULT_CREATIVE)
+    parser.add_argument('--drive', '--creative', type=Path, default=DEFAULT_DRIVE)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('sync')
     p.add_argument('--no-embeddings', action='store_true')
@@ -421,13 +421,13 @@ def main():
     args = parser.parse_args()
     db = connect(args.db)
     if args.command == 'sync':
-        print(json.dumps(sync(db, args.repo, args.draw, args.creative, not args.no_embeddings)))
+        print(json.dumps(sync(db, args.repo, args.draw, args.drive, not args.no_embeddings)))
     elif args.command == 'search':
         print(json.dumps(search(db, args.query, args.limit), ensure_ascii=False, indent=2))
     elif args.command == 'read':
         print(json.dumps(fetch(db, args.id), ensure_ascii=False, indent=2))
     else:
-        mcp(db, args.creative)
+        mcp(db, args.drive)
 
 if __name__ == '__main__':
     main()

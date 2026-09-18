@@ -41,14 +41,28 @@ shortcut, and Mac screenshot options.
 - In a Codex session, ask for the latest AI Inbox item or scan. The agent can call `list_home_attachments` immediately and `open_home_attachment` to view a photo or PDF page. Searchable text arrives on the next index sync. Image-only PDFs can be viewed page by page but do not yet have OCR text.
 
 AI Inbox and Scans are top-level Local Drive folders. Their backing directories
-remain under the SSD's historical `Creative` path; these are bind-mount aliases,
-not copies. The file stays in Local Drive and is available from every device through the same
+are `/srv/mergerfs/ssd/drive/AI Inbox` and `/srv/mergerfs/ssd/drive/Scans`,
+alongside `Creative` in the drive. `drive/Creative` points to the existing SSD
+Creative directory so established app mounts keep working. The old
+`Creative/Scans` path is a temporary scanner compatibility symlink. The file
+stays in Local Drive and is available from every device through the same
 private HTTPS address. Each LLM application needs its own MCP integration or a
 supported file picker; uploading here does not automatically inject the image
 into every existing chat session. The current Codex integration is the tested
 path. No public share link is created.
 
 ## Install and operate
+
+### Existing server migration
+
+When upgrading from the earlier `Creative/AI Inbox` and `Creative/Scans` layout,
+stop File Browser, Samba and `home-print-documents`; then run
+`python3 scripts/move-drive-inbox.py --apply` on the server before recreating
+those containers. The script makes a verified private backup outside Git and
+keeps `Creative/Scans` as a scanner compatibility symlink. It refuses an active
+scan or an occupied destination. The direct top-level Local Drive folders use
+the new SSD paths. Restart only the three affected containers and verify the
+HTTPS folder, an SMB upload, and a completed scan listing.
 
 On the server, after updating the repository:
 
@@ -58,7 +72,8 @@ small, isolated Python environment with pinned dependencies.
 
 ```sh
 cd ~/workspace/home-server
-install -d -m 700 '/srv/mergerfs/ssd/creative/AI Inbox'
+install -d -m 700 '/srv/mergerfs/ssd/drive/AI Inbox'
+install -d -m 700 '/srv/mergerfs/ssd/drive/Scans'
 install -d -m 700 ~/.local/share/home-server/knowledge
 python3 -m venv ~/.local/share/home-server/knowledge/venv
 ~/.local/share/home-server/knowledge/venv/bin/python -m pip install -r config/knowledge/requirements.txt
