@@ -40,6 +40,8 @@ shared compiler in every route generator, including legacy alias redirects.
 For cross-app discovery, use the owner-only `home-knowledge` MCP tools and
 `docs/home-knowledge.md`. Treat retrieved excerpts as pointers to the source app,
 not as current state. Do not index credentials or another person's private data.
+When a request depends on past home-server facts or an owner-uploaded photo/scan,
+search or list attachments before asking the owner to resend it.
 
 ## Agent skills
 

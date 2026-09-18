@@ -359,6 +359,7 @@ def mcp(db, creative: Path):
        'inputSchema':{'type':'object','properties':{'path':{'type':'string'},'page':{'type':'integer','minimum':1,'maximum':10}},'required':['path']}},
     ]
     for line in sys.stdin:
+        req = None
         try:
             req = json.loads(line)
             method, params = req.get('method'), req.get('params', {})
