@@ -136,7 +136,7 @@
       "auth": {
         "mode": "gateway",
         "access": "owner",
-        "adapter": "native"
+        "adapter": "upstream-basic"
       }
     },
     {
@@ -228,7 +228,7 @@
       "auth": {
         "mode": "gateway",
         "access": "owner",
-        "adapter": "native"
+        "adapter": "upstream-basic"
       }
     },
     {
@@ -796,7 +796,7 @@
       "auth": {
         "mode": "gateway",
         "access": "owner",
-        "adapter": "native"
+        "adapter": "trusted-header"
       }
     },
     {

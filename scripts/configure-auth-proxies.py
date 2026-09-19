@@ -2,6 +2,7 @@
 """Apply catalog authentication policies transactionally, with private rollback."""
 import base64
 from datetime import datetime,timezone
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -19,7 +20,8 @@ def read(path):
 def write(path, data):
     # All file names are generated constants; secret content travels over stdin.
     target='/data/nginx/'+str(path.relative_to(NGINX))
-    r=subprocess.run(['docker','exec','-i','npm','sh','-c','mkdir -p "$(dirname "$1")" && cat > "$1.pending" && chmod "$2" "$1.pending" && mv "$1.pending" "$1"','sh',target,'600' if path.name=='nzbget.conf' else '644'],input=data,capture_output=True)
+    secret_include=path.name in ('nzbget.conf','qbittorrent.conf')
+    r=subprocess.run(['docker','exec','-i','npm','sh','-c','mkdir -p "$(dirname "$1")" && cat > "$1.pending" && chmod "$2" "$1.pending" && mv "$1.pending" "$1"','sh',target,'600' if secret_include else '644'],input=data,capture_output=True)
     if r.returncode:raise RuntimeError('Unable to write proxy configuration')
 
 def main():
@@ -43,6 +45,12 @@ def main():
             k,v=line.split('=',1);conf[k]=v
     value=base64.b64encode((conf['ControlUsername']+':'+conf['ControlPassword']).encode()).decode()
     proposed[NGINX/'custom/home-auth/nzbget.conf']=('proxy_set_header Authorization "Basic '+value+'";\nproxy_hide_header WWW-Authenticate;\n').encode()
+    # qBittorrent 5.2 can shift native authentication to the identity-aware
+    # reverse proxy. Keep its distinct recovery credential and inject it only
+    # after Authelia has authorized the owner.
+    passwords=json.loads((Path.home()/'.config/home-server/secrets/service-passwords.json').read_text())
+    value=base64.b64encode(('egouda:'+passwords['torrents']).encode()).decode()
+    proposed[NGINX/'custom/home-auth/qbittorrent.conf']=('proxy_set_header Authorization "Basic '+value+'";\nproxy_hide_header WWW-Authenticate;\n').encode()
     # Global guard: a future proxy missing its registered auth location fails closed.
     top=NGINX/'custom/http_top.conf'
     original_top=read(top).decode() if top.exists() else ''
@@ -52,7 +60,6 @@ def main():
     for p,data in originals.items():
         dest=backup/p.relative_to(NGINX);dest.parent.mkdir(parents=True,exist_ok=True)
         if data is not None:dest.write_bytes(data)
-    import json
     (backup/'manifest.json').write_text(json.dumps({str(p):v is not None for p,v in originals.items()}))
     try:
         for p,data in proposed.items():write(p,data)

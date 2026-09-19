@@ -16,7 +16,7 @@ def services():
         if url.scheme!='https' or not host or not (host=='home.egouda.xyz' or host.endswith('.home.egouda.xyz')) or url.username or url.query:
             raise ValueError('Invalid household browser URL: '+entry['id'])
         policy=entry.get('auth',{})
-        if policy.get('mode')!='gateway' or policy.get('access') not in ('owner','household') or policy.get('adapter') not in ('gateway','native','trusted-header','oidc'):
+        if policy.get('mode')!='gateway' or policy.get('access') not in ('owner','household') or policy.get('adapter') not in ('gateway','native','trusted-header','oidc','upstream-basic'):
             raise ValueError('Missing supported auth policy: '+entry['id'])
         if host in result:raise ValueError('Duplicate service hostname: '+host)
         result[host]=entry
@@ -78,6 +78,10 @@ def render(text, policies=None):
         # NZBGet requires Basic auth upstream; inject only after gateway authorization.
         if hosts==['nzbget.home.egouda.xyz']:
             body=body.replace('include '+INCLUDE+'/identity.conf;', 'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/nzbget.conf;')
+        if hosts==['torrents.home.egouda.xyz']:
+            # qBittorrent 5.2 accepts Basic auth from an identity-aware proxy.
+            # The generated include is mode 600 and never reaches the browser.
+            body=body.replace('include '+INCLUDE+'/identity.conf;', 'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/qbittorrent.conf;')
         if hosts==['coach.home.egouda.xyz']:
             # Exact machine routes require the app's constant-time Bearer key
             # check. All browser routes retain the household gateway policy.

@@ -28,6 +28,12 @@ r,_=render(native,p)
 assert '# home-auth-native-client' in r and 'auth_request off;' in r
 print('PASS default deny, unknown-route rejection, legacy redirects, native-client isolation and repeatable rendering')
 
+torrents=source.replace('life.home.egouda.xyz','torrents.home.egouda.xyz')
+r,_=render(torrents,{'torrents.home.egouda.xyz':{}})
+assert r.count('/qbittorrent.conf;')==2
+assert render(r,{'torrents.home.egouda.xyz':{}})[0]==r
+print('PASS qBittorrent private upstream-auth bridge is present and repeatable')
+
 coach=source.replace('life.home.egouda.xyz','coach.home.egouda.xyz')
 r,_=render(coach,{'coach.home.egouda.xyz':{}})
 assert r.count('auth_request off;')==3

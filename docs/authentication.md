@@ -11,14 +11,17 @@ access control. This does **not** mean every app has native single sign-on.
 | Homarr | OIDC, automatic redirect | One central credential opens existing owner account/boards |
 | Grafana | OIDC, automatic redirect | One central credential opens existing administrator and dashboard |
 | Local Drive / File Browser | Trusted `Remote-User` | One central credential opens existing owner; forged identity overwritten |
-| Draw, Life, Footage and gateway-only tools | Gateway identity | No additional application login configured |
+| Draw, Life, Footage, Coach and gateway-only tools | Gateway identity | No additional application login configured; Coach trusts the owner header only on an isolated proxy network |
+| qBittorrent and NZBGet | Private upstream credential bridge | Central sign-in injects the distinct native recovery credential server-side; it never reaches the browser |
 | Jellyfin | OIDC through pinned Community SSO plugin | Central-only sign-in tested at `/sso/OID/start/authelia`; existing profiles and native TV login preserved |
 | Vue, Requests and other `native` catalog entries | Application-native session | Native SSO remains work in progress |
 
 The distinction matters: a `200` response containing a login form is not proof
 of application sign-in. Run `check-homarr-sso.py`, `check-metrics-sso.py` and
 `check-files-sso.py` and `check-jellyfin-sso.py` to prove native identities using **only** the central password.
-`check-auth.py` checks gateway authorization separately.
+`check-auth.py` checks gateway authorization separately. `check-coach.py` and
+`check-download-logins.py` prove the seamless adapters through their final HTTPS
+addresses while retaining native recovery credentials where applicable.
 
 ## Household identities and least privilege
 

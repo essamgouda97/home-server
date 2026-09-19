@@ -25,6 +25,10 @@ def main():
         base='http://127.0.0.1:'+str(port) if args.local else 'https://'+name+'.home.egouda.xyz'
         jar=gateway.cookies if gateway else http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
         is_q=name=='torrents'
+        if is_q and not args.local:
+            with opener.open(base+'/api/v2/app/version',timeout=20) as response:
+                assert response.status==200 and response.read().startswith(b'v5.')
+            print('PASS torrents central credential only -> authenticated qBittorrent API')
         if not is_q:
             with opener.open(base,timeout=20) as response:
                 assert urllib.parse.urlsplit(response.url).path.lower().startswith('/login'), 'Anonymous UI is not protected'

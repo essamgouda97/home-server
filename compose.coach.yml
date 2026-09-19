@@ -1,0 +1,33 @@
+services:
+  coach:
+    build: ./services/health-coach
+    container_name: health-coach
+    restart: unless-stopped
+    init: true
+    environment:
+      COACH_ORIGIN: https://coach.home.egouda.xyz
+      COACH_TRUST_PROXY_USER: '1'
+      TZ: America/Edmonton
+    volumes:
+      - /srv/mergerfs/ssd/health-coach:/data
+      - /srv/mergerfs/ssd/life-dashboard/data/bridge:/bridge:ro
+      - /home/egouda/.config/home-server/secrets/coach-google.json:/run/secrets/coach-google.json:ro
+      - /home/egouda/.config/home-server/secrets/coach-config.json:/run/secrets/coach-config.json:ro
+      - /home/egouda/.config/home-server/secrets/coach-device-key:/run/secrets/coach-device-key:ro
+    networks:
+      - auth
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 384m
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/api/health',timeout=5)"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+networks:
+  auth:
+    name: health-coach_auth
+    internal: true

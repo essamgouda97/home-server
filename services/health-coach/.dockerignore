@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+test_*.py
+jetson
+.env*
+data
+*.sqlite*
+source.json
+translations.json
