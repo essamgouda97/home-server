@@ -31,3 +31,18 @@ groups:
         for: 10m
         labels: {severity: warning}
         annotations: {summary: 'Less than 10% host memory is available'}
+      - alert: TorrentMetricsUnavailable
+        expr: home_qbittorrent_metrics_up == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'qBittorrent aggregate metrics cannot be collected'}
+      - alert: TorrentSeedPolicyDrift
+        expr: home_qbittorrent_seed_policy_ok == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Torrent ratio or completed-download retention settings changed'}
+      - alert: TorrentDemandStalled
+        expr: home_qbittorrent_with_demand > 0 and home_qbittorrent_uploading == 0
+        for: 6h
+        labels: {severity: warning}
+        annotations: {summary: 'Torrent peers show demand but no upload has run for six hours'}

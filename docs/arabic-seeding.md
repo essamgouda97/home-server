@@ -32,6 +32,12 @@ The configuration helper:
 - saves non-secret rollback metadata privately under
   `~/.local/state/home-server-maintenance/seeding-policy/`.
 
+The once-per-minute home metrics collector publishes aggregate qBittorrent counts,
+active uploads, demand, outstanding ratios, upload speed and a policy-health bit.
+Grafana alerts if collection fails, the policy drifts, or demand remains visible
+without an upload for six hours. No torrent title, hash, tracker, passkey or path is
+included in Prometheus.
+
 Ratio 2.0 is a conservative home default, not a claim about any specific
 tracker's rules. If a tracker requires a higher ratio or a minimum seed duration,
 follow the stricter rule. Do not use a short inactive-seeding cutoff: a torrent

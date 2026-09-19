@@ -10,6 +10,8 @@ Grafana opens the provisioned **Home Server · Health & Metrics** dashboard:
 - disk usage and available bytes for OS, home, var, SSD and HDD;
 - running/healthy containers, per-container CPU/RAM/network and restarts;
 - every catalog app's HTTPS availability and response time;
+- aggregate torrent count, active uploads, peer demand, outstanding ratio count,
+  upload rate and retention-policy health, without titles, hashes or tracker data;
 - active Prometheus alert counts/details for low disk, memory pressure, stopped or
   unhealthy containers, unavailable services, and stale metrics collection.
 
@@ -18,6 +20,9 @@ is not proof that media playback, requests, or app-specific workflows succeed.
 No notification destination has been configured: alerts are visible in Grafana.
 Internal databases/worker containers appear in metrics but do not receive fake
 browser links in Homarr. Expected one-shot initialization containers are excluded.
+Torrent alerts report telemetry failure, ratio/retention policy drift, or peer
+demand with no upload for six hours. The last condition is a diagnostic signal,
+not proof that a tracker or an individual torrent is broken.
 
 ## Reproduce and maintain
 

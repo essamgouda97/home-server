@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Export selected host/container metrics; no socket or credentials given to Grafana."""
 import concurrent.futures
+import http.cookiejar
 import json
 import os
 from pathlib import Path
@@ -9,7 +10,9 @@ import shutil
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 ROOT=Path.home()/'.local/state/home-server-metrics'
 ROOT.mkdir(parents=True,exist_ok=True,mode=0o755)
@@ -63,6 +66,35 @@ try:
   index,temp,util,used,total=[x.strip() for x in line.split(',')]
   for name,value in [('temperature_celsius',temp),('utilization_percent',util),('memory_used_mib',used),('memory_total_mib',total)]:metric('home_gpu_'+name,value,gpu=index)
 except (OSError,subprocess.SubprocessError):pass
+
+# Aggregate-only torrent telemetry: never export titles, hashes, tracker hosts,
+# messages, paths, or credentials to Prometheus.
+try:
+ secrets=Path.home()/'.config/home-server/secrets'
+ password=json.loads((secrets/'service-passwords.json').read_text())['torrents']
+ jar=http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+ base='http://127.0.0.1:15080'
+ login=urllib.request.Request(base+'/api/v2/auth/login',data=urllib.parse.urlencode({'username':'egouda','password':password}).encode())
+ with opener.open(login,timeout=10) as response:assert response.read() in (b'Ok.',b'')
+ with opener.open(base+'/api/v2/app/preferences',timeout=10) as response:prefs=json.load(response)
+ with opener.open(base+'/api/v2/torrents/info',timeout=10) as response:torrents=json.load(response)
+ with opener.open(base+'/api/v2/transfer/info',timeout=10) as response:transfer=json.load(response)
+ metric('home_qbittorrent_metrics_up',1)
+ metric('home_qbittorrent_torrents',len(torrents))
+ metric('home_qbittorrent_uploading',sum(1 for t in torrents if t.get('upspeed',0)>0))
+ metric('home_qbittorrent_with_demand',sum(1 for t in torrents if t.get('num_leechs',0)>0))
+ metric('home_qbittorrent_complete_below_ratio',sum(1 for t in torrents if t.get('progress',0)>=1 and t.get('ratio',0)<2))
+ metric('home_qbittorrent_upload_bytes_per_second',transfer.get('up_info_speed',0))
+ policy_ok=all(prefs.get(k)==v for k,v in {'max_ratio':2.0,'max_ratio_act':0,'max_active_uploads':20,'max_active_torrents':50,'dont_count_slow_torrents':True}.items())
+ for name,port,path in [('radarr',7878,'/mnt/server/radarr/config/config.xml'),('sonarr',8989,'/mnt/server/sonarr/data/config.xml')]:
+  key=ET.parse(path).getroot().findtext('ApiKey')
+  req=urllib.request.Request('http://127.0.0.1:'+str(port)+'/api/v3/downloadclient',headers={'X-Api-Key':key})
+  with urllib.request.urlopen(req,timeout=10) as response:clients=json.load(response)
+  torrent_clients=[c for c in clients if c.get('protocol')=='torrent' or c.get('implementation')=='QBittorrent']
+  policy_ok=policy_ok and bool(torrent_clients) and all(not c.get('removeCompletedDownloads') for c in torrent_clients)
+ metric('home_qbittorrent_seed_policy_ok',policy_ok)
+except Exception:
+ metric('home_qbittorrent_metrics_up',0)
 metric('home_metrics_collected_seconds',time.time())
 tmp=ROOT/('home-'+str(os.getpid())+'.pending');tmp.write_text('\n'.join(rows)+'\n');tmp.chmod(0o644);tmp.replace(ROOT/'home.prom')
 print('Metrics refreshed:',len(containers),'containers and',len(services),'service probes.')
