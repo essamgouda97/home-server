@@ -92,6 +92,9 @@ runs their download-client connection tests. API keys remain unchanged, so
 Requests, Homarr and other integrations continue working. The VPN container,
 torrents, seeding policy, and existing files were not restarted or modified.
 
+Completed torrent retention, ratio policy, title-free auditing and the VPN
+port-forwarding limitation are documented in [Arabic torrent seeding](arabic-seeding.md).
+
 Private backups are under `~/.local/state/home-server-maintenance/`:
 
 - `download-credentials/`: qBittorrent config, Sonarr/Radarr databases and configs.
