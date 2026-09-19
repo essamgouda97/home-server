@@ -12,7 +12,7 @@ p.add_argument('--credential',default='auth')
 p.add_argument('--category',default='Applications')
 p.add_argument('--icon',default='https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/docker.svg')
 p.add_argument('--access',choices=['owner','household'],default='owner')
-p.add_argument('--adapter',choices=['gateway','native','trusted-header','oidc'],default='gateway')
+p.add_argument('--adapter',choices=['gateway','native','trusted-header','oidc','upstream-basic'],default='gateway')
 p.add_argument('--sync',action='store_true')
 a=p.parse_args();assert re.fullmatch('[a-z0-9-]+',a.id)
 u=urlsplit(a.url);assert u.scheme=='https' and u.hostname.endswith('.home.egouda.xyz') and not u.username and not u.query

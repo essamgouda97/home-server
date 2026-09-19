@@ -23,6 +23,12 @@ of application sign-in. Run `check-homarr-sso.py`, `check-metrics-sso.py` and
 `check-download-logins.py` prove the seamless adapters through their final HTTPS
 addresses while retaining native recovery credentials where applicable.
 
+Run `python3 scripts/report-auth-experience.py` for the current human-facing
+inventory. A `native` entry deliberately means a second application login still
+exists. The report separates native credentials already saved in 1Password from
+legacy apps that still need migration, so gateway coverage is never mistaken for
+single sign-on.
+
 ## Household identities and least privilege
 
 `config/identities.json` is the non-secret source of truth:

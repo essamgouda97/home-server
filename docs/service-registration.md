@@ -41,6 +41,11 @@ The script does not deploy the app or bypass the credential/login steps above.
 | `url` | Household HTTPS browser address, optionally a UI path |
 | `probe_url` | Internal Docker URL used by Homarr health checks |
 | `credential` | Applied credential key / 1Password item suffix; null for separately managed native identities |
+
+`upstream-basic` is allowed only when the application officially accepts HTTP
+Basic authentication from an identity-aware reverse proxy. The compiler injects
+the distinct native recovery credential from a mode-600 server-side include after
+gateway authorization. Never put that header value in Git or a browser response.
 | `category` | Human-readable app grouping description |
 | `expected_status` | HTTP responses indicating the endpoint is reachable |
 

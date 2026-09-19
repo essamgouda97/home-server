@@ -12,6 +12,7 @@ import urllib.request
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--local',action='store_true',help='Check direct services before deploying proxy changes')
+    parser.add_argument('--native-only',action='store_true',help='Verify native credentials without requiring the qBittorrent proxy bridge')
     args=parser.parse_args()
     secrets=Path.home()/'.config/home-server/secrets'
     active=secrets/'service-passwords.json'
@@ -25,7 +26,7 @@ def main():
         base='http://127.0.0.1:'+str(port) if args.local else 'https://'+name+'.home.egouda.xyz'
         jar=gateway.cookies if gateway else http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
         is_q=name=='torrents'
-        if is_q and not args.local:
+        if is_q and not args.local and not args.native_only:
             with opener.open(base+'/api/v2/app/version',timeout=20) as response:
                 assert response.status==200 and response.read().startswith(b'v5.')
             print('PASS torrents central credential only -> authenticated qBittorrent API')

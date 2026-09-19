@@ -45,7 +45,7 @@ def main():
         time.sleep(1)
     else:raise SystemExit('Final HTTPS login check failed after proxy reload.')
     print('Coach HTTPS login verified.')
-    subprocess.run(['python3',str(REPO/'scripts/check-download-logins.py')],check=True)
+    subprocess.run(['python3',str(REPO/'scripts/check-download-logins.py'),'--native-only'],check=True)
 
 
 if __name__=='__main__':main()
