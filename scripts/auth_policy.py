@@ -7,6 +7,10 @@ from urllib.parse import urlsplit
 ROOT=Path(__file__).resolve().parents[1]
 INCLUDE='/data/nginx/custom/home-auth'
 MARKER='# home-auth-managed'
+UPSTREAM_BASIC={
+    'torrents.home.egouda.xyz':'qbittorrent',
+    'sonarr.home.egouda.xyz':'sonarr',
+}
 
 def services():
     entries=json.loads((ROOT/'config/services.json').read_text())['services']
@@ -71,9 +75,10 @@ def render(text, policies=None):
         if MARKER in body:
             # Managed routes still need newly introduced adapter includes during
             # upgrades. Keep this narrow and idempotent.
-            if hosts==['torrents.home.egouda.xyz'] and INCLUDE+'/qbittorrent.conf;' not in body:
+            bridge=UPSTREAM_BASIC.get(hosts[0]) if len(hosts)==1 else None
+            if bridge and INCLUDE+'/'+bridge+'.conf;' not in body:
                 body=body.replace('include '+INCLUDE+'/identity.conf;',
-                                  'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/qbittorrent.conf;')
+                                  'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/'+bridge+'.conf;')
                 changes.append((start+1,end,body))
             continue
         body=re.sub(r'(?m)^\s*auth_basic(?:_user_file)?\s+[^;]+;\s*$', '',body)
@@ -85,10 +90,11 @@ def render(text, policies=None):
         # NZBGet requires Basic auth upstream; inject only after gateway authorization.
         if hosts==['nzbget.home.egouda.xyz']:
             body=body.replace('include '+INCLUDE+'/identity.conf;', 'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/nzbget.conf;')
-        if hosts==['torrents.home.egouda.xyz']:
-            # qBittorrent 5.2 accepts Basic auth from an identity-aware proxy.
+        bridge=UPSTREAM_BASIC.get(hosts[0]) if len(hosts)==1 else None
+        if bridge:
+            # These apps accept Basic auth from an identity-aware proxy.
             # The generated include is mode 600 and never reaches the browser.
-            body=body.replace('include '+INCLUDE+'/identity.conf;', 'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/qbittorrent.conf;')
+            body=body.replace('include '+INCLUDE+'/identity.conf;', 'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/'+bridge+'.conf;')
         if hosts==['coach.home.egouda.xyz']:
             # Exact machine routes require the app's constant-time Bearer key
             # check. All browser routes retain the household gateway policy.

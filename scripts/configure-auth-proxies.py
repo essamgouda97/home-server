@@ -20,7 +20,7 @@ def read(path):
 def write(path, data):
     # All file names are generated constants; secret content travels over stdin.
     target='/data/nginx/'+str(path.relative_to(NGINX))
-    secret_include=path.name in ('nzbget.conf','qbittorrent.conf')
+    secret_include=path.parent.name=='home-auth' and path.name not in ('location.conf','identity.conf')
     r=subprocess.run(['docker','exec','-i','npm','sh','-c','mkdir -p "$(dirname "$1")" && cat > "$1.pending" && chmod "$2" "$1.pending" && mv "$1.pending" "$1"','sh',target,'600' if secret_include else '644'],input=data,capture_output=True)
     if r.returncode:raise RuntimeError('Unable to write proxy configuration')
 
@@ -49,8 +49,9 @@ def main():
     # reverse proxy. Keep its distinct recovery credential and inject it only
     # after Authelia has authorized the owner.
     passwords=json.loads((Path.home()/'.config/home-server/secrets/service-passwords.json').read_text())
-    value=base64.b64encode(('egouda:'+passwords['torrents']).encode()).decode()
-    proposed[NGINX/'custom/home-auth/qbittorrent.conf']=('proxy_set_header Authorization "Basic '+value+'";\nproxy_hide_header WWW-Authenticate;\n').encode()
+    for service,include in [('torrents','qbittorrent'),('sonarr','sonarr')]:
+        value=base64.b64encode(('egouda:'+passwords[service]).encode()).decode()
+        proposed[NGINX/'custom/home-auth'/(include+'.conf')]=('proxy_set_header Authorization "Basic '+value+'";\nproxy_hide_header WWW-Authenticate;\n').encode()
     # Global guard: a future proxy missing its registered auth location fails closed.
     top=NGINX/'custom/http_top.conf'
     original_top=read(top).decode() if top.exists() else ''

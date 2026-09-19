@@ -12,7 +12,7 @@ access control. This does **not** mean every app has native single sign-on.
 | Grafana | OIDC, automatic redirect | One central credential opens existing administrator and dashboard |
 | Local Drive / File Browser | Trusted `Remote-User` | One central credential opens existing owner; forged identity overwritten |
 | Draw, Life, Footage, Coach and gateway-only tools | Gateway identity | No additional application login configured; Coach trusts the owner header only on an isolated proxy network |
-| qBittorrent and NZBGet | Private upstream credential bridge | Central sign-in injects the distinct native recovery credential server-side; it never reaches the browser |
+| qBittorrent, Sonarr and NZBGet | Private upstream credential bridge | Central sign-in injects the distinct native recovery credential server-side; it never reaches the browser |
 | Jellyfin | OIDC through pinned Community SSO plugin | Central-only sign-in tested at `/sso/OID/start/authelia`; existing profiles and native TV login preserved |
 | Vue, Requests and other `native` catalog entries | Application-native session | Native SSO remains work in progress |
 

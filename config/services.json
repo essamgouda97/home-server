@@ -90,7 +90,7 @@
       "auth": {
         "mode": "gateway",
         "access": "owner",
-        "adapter": "native"
+        "adapter": "upstream-basic"
       }
     },
     {

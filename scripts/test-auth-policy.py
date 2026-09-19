@@ -36,6 +36,10 @@ managed=r.replace('include '+"/data/nginx/custom/home-auth/qbittorrent.conf;\n  
 upgraded,_=render(managed,{'torrents.home.egouda.xyz':{}})
 assert upgraded.count('/qbittorrent.conf;')==2
 print('PASS qBittorrent private upstream-auth bridge is present and repeatable')
+for host,include in [('sonarr.home.egouda.xyz','sonarr')]:
+ r,_=render(source.replace('life.home.egouda.xyz',host),{host:{}})
+ assert r.count('/'+include+'.conf;')==2 and render(r,{host:{}})[0]==r
+print('PASS Sonarr private upstream-auth bridge is present and repeatable')
 
 coach=source.replace('life.home.egouda.xyz','coach.home.egouda.xyz')
 r,_=render(coach,{'coach.home.egouda.xyz':{}})
