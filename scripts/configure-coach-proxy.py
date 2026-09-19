@@ -26,8 +26,8 @@ def main():
     parsed=__import__('json').loads(subprocess.run(['docker','network','inspect',network],capture_output=True,text=True,check=True).stdout)[0]
     assert {v['Name'] for v in parsed['Containers'].values()}=={'health-coach','npm'}
     subprocess.run(['docker','run','--rm','--network','none','-v',
-                    str(REPO/'services/health-coach/test_coach.py')+':/test_coach.py:ro',
-                    '--entrypoint','python','health-coach-coach','/test_coach.py'],check=True)
+                    str(REPO/'services/health-coach/test_coach.py')+':/app/test_coach.py:ro',
+                    '--entrypoint','python','health-coach-coach','-m','unittest','test_coach.py'],check=True)
     folder=Path.home()/'.local/state/home-server-maintenance/coach-proxy'/time.strftime('%Y%m%dT%H%M%S');folder.mkdir(parents=True)
     previous=subprocess.run(['docker','exec','npm','cat',DEST],capture_output=True)
     if previous.returncode==0:(folder/'coach.conf').write_bytes(previous.stdout)
