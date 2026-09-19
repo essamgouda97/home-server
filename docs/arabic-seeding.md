@@ -77,6 +77,32 @@ DNS, kill-switch behavior and the forwarded port, then move qBittorrent during a
 quiet window. Keep the existing CyberGhost configuration as rollback until upload
 traffic is proven. Do not change household router forwarding for this migration.
 
+The opt-in implementation is versioned in `compose.vpn-forwarding.yml`. It pins
+Gluetun, requests a Canadian Proton P2P server and stores the random forwarded port
+under `/mnt/server/vpn/gluetun`. A host timer synchronizes that port into
+qBittorrent using its private runtime credential and reannounces existing jobs.
+The overlay is deliberately not part of normal `make start`.
+
+Provision and migrate during a quiet window:
+
+1. Generate a Proton WireGuard configuration with NAT-PMP enabled. Save only the
+   private key in `~/.config/home-server/secrets/protonvpn.env`, following
+   `config/vpn/protonvpn.env.example`, and set mode 600.
+2. Run `python3 scripts/prepare-forwarding-vpn.py`.
+3. Back up the current VPN and qBittorrent configuration outside Git.
+4. Run `docker compose --env-file server.conf --env-file .env -f docker-compose.yml
+   -f compose.vpn-forwarding.yml up -d vpn qbittorrent`.
+5. Enable `home-qbittorrent-port-sync.timer`, wait for a forwarded port, then run
+   `scripts/sync-qbittorrent-forwarded-port.py` and
+   `scripts/check-forwarding-vpn.py`.
+6. Require the real external probe, distinct VPN egress, qBittorrent login audit,
+   DNS, server and network checks to pass before calling the migration complete.
+
+Rollback disables the port-sync timer and starts `vpn qbittorrent` using only the
+base Compose file. Restore the pre-migration qBittorrent preferences if necessary;
+do not restore its database over newer torrent jobs. The Gluetun state and Proton
+credential can remain offline for investigation without affecting CyberGhost.
+
 References:
 
 - [qBittorrent option behavior](https://github.com/qbittorrent/qBittorrent/wiki/Explanation-of-Options-in-qBittorrent)

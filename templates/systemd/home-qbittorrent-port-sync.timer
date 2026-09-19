@@ -1,0 +1,12 @@
+[Unit]
+Description=Keep qBittorrent aligned with the VPN forwarded port
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

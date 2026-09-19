@@ -1,0 +1,9 @@
+[Unit]
+Description=Synchronize Gluetun forwarded port into qBittorrent
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/workspace/home-server
+ExecStart=/usr/bin/python3 %h/workspace/home-server/scripts/sync-qbittorrent-forwarded-port.py
+
