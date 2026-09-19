@@ -29,7 +29,8 @@ SERVARR = {
 
 def get_json(url, headers=None, opener=None):
     req = urllib.request.Request(url, headers=headers or {})
-    with (opener or urllib.request).open(req, timeout=30) as response:
+    open_url = opener.open if opener else urllib.request.urlopen
+    with open_url(req, timeout=30) as response:
         return json.load(response)
 
 
