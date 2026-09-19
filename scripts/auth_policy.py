@@ -68,7 +68,14 @@ def render(text, policies=None):
         if not all(host in policies for host in hosts):
             raise ValueError('HTTPS host is not registered for authentication: '+','.join(hosts))
         covered.update(hosts)
-        if MARKER in body:continue
+        if MARKER in body:
+            # Managed routes still need newly introduced adapter includes during
+            # upgrades. Keep this narrow and idempotent.
+            if hosts==['torrents.home.egouda.xyz'] and INCLUDE+'/qbittorrent.conf;' not in body:
+                body=body.replace('include '+INCLUDE+'/identity.conf;',
+                                  'include '+INCLUDE+'/identity.conf;\n    include '+INCLUDE+'/qbittorrent.conf;')
+                changes.append((start+1,end,body))
+            continue
         body=re.sub(r'(?m)^\s*auth_basic(?:_user_file)?\s+[^;]+;\s*$', '',body)
         if re.search(r'\bauth_request\s|\bsatisfy\s+any',body):
             raise ValueError('Review existing authorization rules: '+','.join(hosts))

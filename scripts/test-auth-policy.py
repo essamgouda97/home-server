@@ -32,6 +32,9 @@ torrents=source.replace('life.home.egouda.xyz','torrents.home.egouda.xyz')
 r,_=render(torrents,{'torrents.home.egouda.xyz':{}})
 assert r.count('/qbittorrent.conf;')==2
 assert render(r,{'torrents.home.egouda.xyz':{}})[0]==r
+managed=r.replace('include '+"/data/nginx/custom/home-auth/qbittorrent.conf;\n    ",'')
+upgraded,_=render(managed,{'torrents.home.egouda.xyz':{}})
+assert upgraded.count('/qbittorrent.conf;')==2
 print('PASS qBittorrent private upstream-auth bridge is present and repeatable')
 
 coach=source.replace('life.home.egouda.xyz','coach.home.egouda.xyz')
