@@ -28,6 +28,7 @@ app.config.update(SECRET_KEY=key,MAX_CONTENT_LENGTH=128*1024,SESSION_COOKIE_NAME
                   SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Strict',PERMANENT_SESSION_LIFETIME=2592000)
 ORIGIN=os.environ.get('COACH_ORIGIN','https://coach.home.egouda.xyz')
 TRUST_PROXY_USER=os.environ.get('COACH_TRUST_PROXY_USER')=='1'
+DEVICE_LOCK=threading.Lock()
 
 
 def failure(message, status=400):return jsonify(error=message),status
@@ -257,7 +258,7 @@ def device_snapshot():
         except (ValueError,TypeError):return failure('Invalid image')
         if len(jpeg)>90000 or not jpeg.startswith(b'\xff\xd8') or not jpeg.endswith(b'\xff\xd9'):return failure('Invalid JPEG')
         path=store.DATA/'camera.jpg';tmp=store.DATA/'camera.pending'
-        with LOGIN_LOCK:
+        with DEVICE_LOCK:
             tmp.write_bytes(jpeg);tmp.replace(path)
         metadata['frameAt']=observed
     with store.connect() as db:store.put(db,'device_snapshot',metadata);store.put(db,'device_seen',time.time())
