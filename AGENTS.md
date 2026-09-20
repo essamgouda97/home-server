@@ -43,6 +43,19 @@ not as current state. Do not index credentials or another person's private data.
 When a request depends on past home-server facts or an owner-uploaded photo/scan,
 search or list attachments before asking the owner to resend it.
 
+## Architecture decision continuity
+
+When making or changing a home-server architecture decision, update the relevant
+editable Draw architecture board whenever practical, alongside the repository docs.
+Record the rationale, deployed versus proposed state, data/auth boundaries, and
+verification date. Preserve user edits: add a dated section or companion board when
+an existing board cannot be safely updated. Verify persisted elements through the
+Draw API and record its board link in the relevant doc. If publication is blocked,
+record the pending update explicitly; do not claim the diagram is current.
+Use the authenticated publishing pattern in
+`scripts/publish-home-server-lifecycle-board.py`. Never put credentials or private
+media metadata in diagrams. This is an ongoing owner preference, not a one-off task.
+
 ## Agent skills
 
 ### Issue tracker
