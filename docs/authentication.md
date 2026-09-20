@@ -1,5 +1,31 @@
 # Household identity and application sign-in
 
+## Homarr callback failure — fixed September 20, 2026
+
+Authelia's default 4 KiB request buffer rejected browser headers with HTTP 431;
+Nginx's authorization subrequest surfaced this as HTTP 500, including during
+Homarr's OIDC callback. Small, fresh scripted sessions passed and missed the bug.
+The shared `server.buffers.read` and `write` limits are now 16384 bytes in
+`config/auth/configuration.yml` and the private deployed configuration. This
+follows [Authelia's header-size guidance](https://www.authelia.com/reference/guides/log-messages/#request-header-too-large).
+Authorization, account credentials and family grants are unchanged.
+
+`check-homarr-sso.py` now repeats the actual HTTPS OIDC flow with a synthetic
+6 KiB cookie and asserts the existing owner identity. It reproduced HTTP 500
+before the change and passed afterward. Fresh Chrome login reached the owner's
+board. `check-auth.py` passed all registered services and household restrictions;
+Mac `make check-network` passed. Server `make check-server` reported one separate
+failure: the running VPN gateway was unhealthy; it was not restarted by this fix.
+
+The private pre-change configuration is retained under
+`~/.local/state/home-server-maintenance/auth-header-fix/` on the server. Restore
+the matching snapshot and restart `home-authelia` to roll back. Validate config
+before restart; never print its contents or callback query strings.
+
+An additive [editable Draw companion board](https://draw.home.egouda.xyz/?board=muae8bq71c5mpd79gwb)
+records the cause, deployed limits, boundaries and verification. All 10 elements
+were read back through the authenticated Draw API; existing boards were preserved.
+
 ## Current state — September 16, 2026
 
 Authelia is the shared identity provider at `https://auth.home.egouda.xyz`.

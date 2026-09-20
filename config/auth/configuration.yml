@@ -2,6 +2,11 @@
 theme: auto
 server:
   address: tcp://:9091/
+  # OIDC state/session cookies plus browser headers exceed the 4 KiB default.
+  # A rejected auth subrequest (431) otherwise becomes an Nginx 500.
+  buffers:
+    read: 16384
+    write: 16384
   disable_healthcheck: true # Use explicit Docker check; keep root filesystem read-only.
 log:
   level: warn
