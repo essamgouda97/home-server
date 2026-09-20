@@ -24,6 +24,9 @@ SERVARR = {
     "sonarr": ("http://127.0.0.1:8989", Path("/mnt/server/sonarr/data/config.xml")),
 }
 POLICY = {
+    "max_ratio_enabled": True,
+    "max_seeding_time_enabled": False,
+    "max_inactive_seeding_time_enabled": False,
     "max_ratio": 2.0,
     "max_ratio_act": 0,  # pause; never delete content or torrent metadata
     "max_active_uploads": 20,

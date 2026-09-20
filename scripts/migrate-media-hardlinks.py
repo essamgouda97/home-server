@@ -29,7 +29,7 @@ def main():
     backup = Path.home()/'.local/state/home-server-maintenance/media-hardlinks'/datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup.mkdir(parents=True, mode=0o700)
     # Capture the pre-migration storage declarations from the parent commit.
-    old = subprocess.check_output(['git','-C',str(REPO),'show','HEAD^:docker-compose.yml'])
+    old = subprocess.check_output(['git','-C',str(REPO),'show','7b5afa1:docker-compose.yml'])
     assert b'/media/tvshows:/tv' in old and b'/media/movies:/movies' in old
     (backup/'compose.before.yml').write_bytes(old)
     hook = DATA/'media-path-init'

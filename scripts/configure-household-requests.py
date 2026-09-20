@@ -34,6 +34,7 @@ def main():
         previous=next((p for p in profiles if p['name']==PROFILE),None)
         profile=copy.deepcopy(previous or next(p for p in profiles if p['name']=='HD-1080p'))
         profile.pop('id',None);profile.update({'name':PROFILE,'upgradeAllowed':False,'cutoff':7})
+        if app=='radarr':profile['language']={'id':-2,'name':'Original'}
         def allowed(item):
             if item.get('items'):
                 children=[allowed(child) for child in item['items']]
