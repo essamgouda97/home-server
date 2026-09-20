@@ -515,8 +515,8 @@ services:
       - TZ=${TZ:-America/Edmonton}
     volumes:
       - ${SERVER_DATA_DIR:-/mnt/server}/sonarr/data:/config
-      - ${SERVER_DATA_DIR:-/mnt/server}/media/tvshows:/tv
-      - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
+      - ${SERVER_DATA_DIR:-/mnt/server}/media:/data
+      - ${SERVER_DATA_DIR:-/mnt/server}/media-path-init:/custom-cont-init.d:ro
     ports:
       - "127.0.0.1:8989:8989"
     networks:
@@ -533,8 +533,8 @@ services:
       - UMASK=022
     volumes:
       - ${SERVER_DATA_DIR:-/mnt/server}/radarr/config:/config
-      - ${SERVER_DATA_DIR:-/mnt/server}/media/movies:/movies
-      - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
+      - ${SERVER_DATA_DIR:-/mnt/server}/media:/data
+      - ${SERVER_DATA_DIR:-/mnt/server}/media-path-init:/custom-cont-init.d:ro
     ports:
       - "127.0.0.1:7878:7878"
     networks:
