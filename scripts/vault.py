@@ -28,7 +28,19 @@ else:
 
 if a.action=='status':
  r=subprocess.run(['op','whoami',*account_args,'--format=json'],capture_output=True,text=True)
- if r.returncode:raise SystemExit('1Password is locked or unavailable; approve the desktop prompt, then retry.')
+ if not a.agent and r.returncode and 'account is not signed in' in r.stderr.lower():
+  # Desktop authorization may be scoped to the current launcher. Authenticate
+  # and verify in the same process; never print or persist sign-in output.
+  signin=subprocess.run(['op','signin',*account_args],capture_output=True,text=True)
+  if signin.returncode==0:
+   r=subprocess.run(['op','whoami',*account_args,'--format=json'],capture_output=True,text=True)
+ if r.returncode:
+  error=r.stderr.lower()
+  if 'account is not signed in' in error:
+   raise SystemExit('The configured 1Password account is not signed in to the CLI. Open 1Password and complete the official CLI sign-in flow, then retry.')
+  if 'timed out' in error or 'cancel' in error:
+   raise SystemExit('1Password authorization timed out or was cancelled. Retry and approve the desktop prompt.')
+  raise SystemExit('1Password access could not be verified. Check desktop integration and account sign-in, then retry.')
  print('PASS 1Password '+('service-account' if a.agent else 'desktop')+' access; configured home-server credential references:',len(config['items']))
 else:
  if a.service not in config['items']:raise SystemExit('Unknown service; register its saved vault reference first.')
