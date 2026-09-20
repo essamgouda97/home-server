@@ -87,6 +87,20 @@
       "urls": [
         "https://auth.home.egouda.xyz"
       ]
+    },
+    "arabtorrents": {
+      "title": "Home Server \u2014 arabtorrents",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/2u3qryqnkgzzn4w7rvbtvt5rge/password",
+      "urls": [
+        "https://arab-torrents.net"
+      ]
+    },
+    "arabscene": {
+      "title": "Home Server \u2014 arabscene",
+      "password_ref": "op://5p4vew3tptjibqhwx6ubo64jyy/mr5xcy4xr6lvsxdaxqczncb7ky/password",
+      "urls": [
+        "https://arabscene.me"
+      ]
     }
   }
 }
