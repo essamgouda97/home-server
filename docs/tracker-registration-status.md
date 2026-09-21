@@ -43,3 +43,45 @@ discarded, never submitted to a client. Radarr's ArabP2P connection test passed
 and its `DisabledTill` backoff cleared. Existing torrents were not changed.
 Network checks passed; the full server check still flags the separately unhealthy
 VPN gateway. No full media download was tested.
+
+## Unlimited ArabP2P seeding — September 20, 2026
+
+The owner requested unlimited contribution for ArabP2P. Both matching current
+jobs now have ratio, seeding-time and inactive-seeding-time limits set to `-1`
+(unlimited). Other trackers retain the global 2.0 ratio/stop policy. Completed
+jobs remain retained by Radarr and Sonarr.
+
+`scripts/apply-arabp2p-seeding.py --apply` matches only `arabp2p.net` and its
+subdomains in qBittorrent tracker metadata, saves previous limits privately, and
+read-verifies the changes. Without `--apply` it audits only. qBittorrent 5.2
+requires `shareLimitAction` along with all three limits. The script does not
+resume, add, remove or read media files. New jobs receive the exception on the
+next timer tick (30 seconds plus scheduling/API latency).
+
+Install/reproduce on the server:
+
+```sh
+python3 scripts/apply-arabp2p-seeding.py --apply
+install -m 644 templates/systemd/home-arabp2p-seeding.service templates/systemd/home-arabp2p-seeding.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now home-arabp2p-seeding.timer
+python3 scripts/apply-arabp2p-seeding.py
+```
+
+To roll back, disable the timer first and restore per-job limits from the private
+records under `~/.local/state/home-server-maintenance/arabp2p-seeding/`.
+Regular `configure-seeding-policy.py` still configures the global default; the
+tracker-specific exception is maintained separately by this timer.
+
+Attribution check: both ArabP2P jobs' full announce URLs match fresh metadata
+obtained while authenticated as the owner's new account. URLs/passkeys were
+compared locally and never printed. This verifies intended account attribution,
+not tracker-side credited upload. At verification, both tracker requests reported
+DNS failure, the VPN gateway could not resolve its own CyberGhost endpoint, and
+no upload was occurring. Seeder availability cannot be inferred from this failure.
+Unlimited seeding does not guarantee upload credit or prevent an account ban.
+
+Both policy audits and Mac network checks pass. Server health still fails on the
+VPN gateway. The [editable Draw companion board](https://draw.home.egouda.xyz/?board=muaj85ardrdsipsi5l)
+records deployed policy and this unresolved boundary; all 8 elements were verified
+persisted. Existing boards were preserved.

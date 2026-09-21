@@ -1,0 +1,10 @@
+[Unit]
+Description=Apply unlimited seeding only to ArabP2P torrents
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/workspace/home-server
+ExecStart=/usr/bin/python3 %h/workspace/home-server/scripts/apply-arabp2p-seeding.py --apply
+TimeoutStartSec=90
+UMask=0077
+

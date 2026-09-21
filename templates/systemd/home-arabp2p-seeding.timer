@@ -1,0 +1,10 @@
+[Unit]
+Description=Give new ArabP2P torrents unlimited seeding
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
