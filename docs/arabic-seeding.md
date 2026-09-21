@@ -1,5 +1,11 @@
 # Arabic torrent seeding
 
+September 20 update: [host-wide VPN](host-vpn.md) replaces the legacy download-only
+gateway; tracker announcements and existing downloads work again. ArabP2P jobs
+now have [unlimited seeding](tracker-registration-status.md#unlimited-arabp2p-seeding--september-20-2026),
+maintained automatically every 30 seconds. The 2.0 ratio remains the default for
+other trackers. Historical diagnosis and optional Proton migration follow below.
+
 ## Current diagnosis
 
 The media library and the torrent queue are separate records. Radarr imported 65

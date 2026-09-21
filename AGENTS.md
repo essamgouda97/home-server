@@ -9,6 +9,11 @@ Servo is intentionally disabled. Preserve that state unless explicitly requested
 Never print `.env`, auth caches, Docker environment values, or credential-bearing
 application settings. Keep maintenance backups outside Git. Run `make check-network`
 from the Mac and `make check-server` from the server after infrastructure changes.
+The home server's internet egress now uses the host VPN and fail-closed firewall.
+Read `docs/host-vpn.md` before network/Docker changes; also run
+`python3 scripts/check-host-vpn.py` on the server. Preserve the firewall, IPv6
+leak protection and local/Tailscale exceptions. Do not restore direct internet
+egress or reactivate the legacy download VPN as an incidental troubleshooting step.
 The owner prefers open-source, self-hosted services and DIY hardware by default.
 Keep new setup reproducible in this repository. The existing subscription-backed
 Codex assistant is an explicit choice; keep speech processing local.

@@ -1,5 +1,10 @@
 # Home-server security and recovery
 
+September 20 update: [host-wide VPN egress and kill switch](host-vpn.md) now
+protect host processes and Docker internet traffic. Actual tunnel-outage and
+IPv4/IPv6 bypass tests passed. Local/Tailscale access remains available; public
+ingress policy is unchanged. The former download-only VPN container is retired.
+
 Applied September 16, 2026. Read together with [operations](server-operations.md),
 [service registration](service-registration.md), and [monitoring](monitoring.md).
 

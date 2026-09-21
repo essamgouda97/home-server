@@ -46,6 +46,11 @@ VPN gateway. No full media download was tested.
 
 ## Unlimited ArabP2P seeding — September 20, 2026
 
+Later that evening the [host-wide VPN migration](host-vpn.md) resolved the DNS/
+connectivity blocker recorded below. Both tracker announces became working and
+the owner's existing downloads progressed. The earlier failed checks remain here
+as diagnostic history; final network and server checks passed.
+
 The owner requested unlimited contribution for ArabP2P. Both matching current
 jobs now have ratio, seeding-time and inactive-seeding-time limits set to `-1`
 (unlimited). Other trackers retain the global 2.0 ratio/stop policy. Completed

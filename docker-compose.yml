@@ -368,9 +368,11 @@ services:
 
   # ─── VPN ────────────────────────────────────────────
   vpn:
+    # Recovery profile only. Normal internet egress uses the host VPN kill switch.
+    profiles: [legacy-vpn]
     container_name: vpn-gateway
     image: dperson/openvpn-client@sha256:d174047b57d51734143325ad7395210643025e6516ba60a937e9319dbb462293
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "127.0.0.1:90:80"
       - "127.0.0.1:6881:6881"
@@ -614,9 +616,15 @@ services:
     volumes:
       - ${SERVER_DATA_DIR:-/mnt/server}/qbittorrent/config:/config
       - ${SERVER_DATA_DIR:-/mnt/server}/downloads:/downloads
-    network_mode: "service:vpn"
-    depends_on:
-      - vpn
+    # Host-level VPN firewall covers every container, including this client.
+    # Preserve the existing proxy/Servarr hostname during the migration.
+    networks:
+      proxy:
+        aliases: [vpn-gateway]
+    ports:
+      - "127.0.0.1:15080:15080"
+      - "127.0.0.1:6881:6881"
+      - "127.0.0.1:6881:6881/udp"
     security_opt:
       - no-new-privileges:true
     deploy:

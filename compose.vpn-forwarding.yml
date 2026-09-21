@@ -4,6 +4,8 @@ name: home-server
 # file without the base docker-compose.yml and a validated private env file.
 services:
   vpn:
+    profiles: !reset []
+    restart: unless-stopped
     image: qmcgaw/gluetun:v3.40.0@sha256:2b42bfa046757145a5155acece417b65b4443c8033fb88661a8e9dcf7fda5a00
     env_file:
       - ${PROTONVPN_ENV_FILE:-/home/egouda/.config/home-server/secrets/protonvpn.env}
@@ -21,3 +23,8 @@ services:
       TZ: ${TZ:-America/Edmonton}
     volumes:
       - ${SERVER_DATA_DIR:-/mnt/server}/vpn/gluetun:/gluetun
+  qbittorrent:
+    networks: !reset {}
+    ports: !reset []
+    network_mode: service:vpn
+    depends_on: [vpn]
