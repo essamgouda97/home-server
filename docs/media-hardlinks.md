@@ -1,5 +1,10 @@
 # Single-copy media imports
 
+September 20 update: [multiple movie qualities](media-versions.md) now documents
+the selected dual-version library setup. ArabP2P jobs have unlimited seeding;
+other jobs retain the 2.0 default. The owner later authorized local filename
+matching and hashing, with private names/content excluded from logs and chat.
+
 Deployed September 19, 2026. Radarr and Sonarr now mount the whole
 `/mnt/server/media` directory at `/data`. Their legacy `/downloads`, `/movies`
 and `/tv` paths are symlinks within the container to directories beneath that
