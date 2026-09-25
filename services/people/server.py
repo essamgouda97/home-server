@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
 from identity_policy import identities
+from password_policy import validate_password
 
 PRIVATE=Path.home()/'.config/home-server/secrets/people'
 STATIC=Path(__file__).with_name('static')
@@ -130,13 +131,12 @@ class Handler(BaseHTTPRequestHandler):
     def enroll(self,body):
         token=body.get('token','');password=body.get('password','');confirmation=body.get('confirmation','')
         if not isinstance(token,str) or len(token)>128:return self.respond(404,{'error':'Invitation unavailable'})
-        if not isinstance(password,str) or len(password)<16 or len(password)>256 or '\n' in password or '\r' in password:
-            raise ValueError('Use a password of 16–256 characters')
-        if not secrets.compare_digest(password,confirmation):raise ValueError('Passwords do not match')
+        if not isinstance(password,str) or not isinstance(confirmation,str) or not secrets.compare_digest(password.encode(),confirmation.encode()):raise ValueError('Passwords do not match')
         digest=hashlib.sha256(token.encode()).hexdigest()
         with open(PRIVATE/'lock','a+') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX);store=invite_store();invite=store['invitations'].get(digest)
             if not invite or invite['status']!='pending' or invite['expires']<=time.time():return self.respond(404,{'error':'Invitation expired or already used'})
+            validate_password(password, invite['username'], invite['name'])
             invite['status']='processing';atomic_json(PRIVATE/'invitations.json',store)
         try:
             with open(PRIVATE/'enrollment-lock','a+') as lock:

@@ -21,6 +21,7 @@ def docker_read(path):
     return result.stdout if result.returncode==0 else None
 
 def main():
+    subprocess.run(['python3',str(ROOT/'scripts/install-people-dependencies.py')],check=True)
     os.umask(0o077);PRIVATE.mkdir(parents=True,mode=0o700,exist_ok=True)
     key_path=PRIVATE/'proxy-key'
     if not key_path.exists():key_path.write_text(secrets.token_hex(32)+'\n')

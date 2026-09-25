@@ -46,7 +46,7 @@ def design():
       m.box('saveflow','POST /records or PUT /records/{id}\nAgent validates and persists result\nSource document + parser provenance\nNo human review gate',1470,1910,440,195,m.GREEN,18),
       m.arrow('uploadflow','taskflow'),m.arrow('taskflow','jobflow'),m.arrow('jobflow','saveflow'),
       m.box('conflicts','Concurrent edits\nPUT includes current revision\n409 → fetch + reconcile + retry\nArchive/restore preserves history',0,2210,440,180,m.AMBER),
-      m.box('analyticsflow','GET /analytics\nSaved income/expense records\nTotals, months, categories\nCurrencies remain separate',490,2210,440,180,m.GREEN),
+      m.box('analyticsflow','Analytics UI: team-defined views\nData-agnostic placeholder for now\nCharts populated later by the team\nExisting financial API retained',490,2210,440,180,m.GREEN),
       m.box('operationalflow','Aggregate telemetry only\nApp + host + containers → Prometheus\nExisting Grafana, 24 panels\nNightly verified local snapshots',980,2210,440,180,m.BLUE,18),
       m.box('failureflow','Failure and trust boundaries\n401: key/grant invalid; 403: scope\n429: throttle; failed jobs stay failed\nDocuments and script output are data',1470,2210,440,180,m.AMBER,18),
       m.arrow('saveflow','analyticsflow'),m.arrow('saveflow','conflicts'),m.arrow('jobflow','operationalflow'),
@@ -57,11 +57,12 @@ def design():
       m.box('pair-request','2. Agent requests a connection\nPOST /api/v1/connections (no key needed)\nPrivate device_code stays with the agent\nHuman gets only a link + matching code',655,2760,600,190,m.BLUE,18),
       m.box('pair-confirm','3. Person opens the agent’s link\nCentral sign-in; invited members only\nRecognize agent name + compare code\nChoose access → Connect this agent',1310,2760,600,190,m.VIOLET,18),
       m.arrow('pair-start','pair-request'),m.arrow('pair-request','pair-confirm'),
-      m.box('pair-token','4. Agent finishes automatically\nPOST /connections/token every 5 seconds\nPending → wait; denied/expired → stop\nSuccess → credential delivered once',0,3050,600,190,m.BLUE,18),
+      m.box('pair-token','4. Return and confirm to the agent\nAgent polls /connections/token every 5s\nUI shows waiting / expired / connected\nSuccess → credential delivered once',0,3050,600,190,m.BLUE,18),
       m.box('pair-ready','5. Ready to work\nAgent stores credential securely\nGET /api/v1/me confirms identity\nPerson asks for uploads, parsing or analysis',655,3050,600,190,m.GREEN,18),
       m.box('pair-boundary','Access confirmation, not data review\nSetup expires after 10 minutes\nScoped, expiring, revocable credentials\nFuture parsing and updates need no review',1310,3050,600,190,m.AMBER,18),
       m.arrow('pair-token','pair-ready'),
-      m.heading('Manual API keys remain an advanced fallback. Browser-only/search-only agents may need their application’s connector support.',0,3330,18)]
+      m.heading('Manual API keys remain an advanced fallback. Browser-only/search-only agents may need their application’s connector support.',0,3330,18),
+      m.box('onboarding-hardening','Deployed follow-up · 24 September 2026\nSignup: standard username + new-password fields; local zxcvbn score 4, 16–72 characters; no passwords sent externally.\nAccount replacement: private backup → revoke identity, sessions, agent keys and invites → fresh one-use invitation. Shared data preserved.\nUI: dark by default; waiting-agent status refreshes every 5s. Analytics awaits team-defined, data-agnostic views.',0,3470,1910,180,m.BLUE,20)]
 def persisted_design():
     # The initial two headings were saved before Draw rejected IDs reused from
     # the overview board. Preserve those headings and append distinct elements.

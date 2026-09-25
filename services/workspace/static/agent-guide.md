@@ -81,3 +81,5 @@ Rate limit: 120 authenticated requests/minute/key. On 429 honor Retry-After.
 This is a REST service. It is not an MCP endpoint or an automatic ChatGPT connector.
 Agents with HTTP tools can use it directly. An agent product that only supports
 MCP needs an adapter; a product supporting OpenAPI actions can import the schema.
+
+If your runtime waits for a human reply, explicitly ask them to return and say “Confirmed — finish setup.” Human approval alone does not issue a credential; resume polling the token endpoint afterward.

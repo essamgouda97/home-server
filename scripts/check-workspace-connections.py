@@ -41,11 +41,19 @@ with AuthSession(portal='https://signin.egouda.xyz',target_url=check.BASE) as se
         response.close()
         check.data(session.opener,'/ui-api/connections/'+value['user_code'],{'approve':True,'scope':'read','days':7})
         check.data(session.opener,'/ui-api/connections/'+value['user_code'],{'approve':True,'scope':'read','days':7},status=409)
+        listing=check.data(session.opener,'/ui-api/keys')
+        pending=[row for row in listing['connections'] if row['name']=='Verification pairing']
+        assert pending and pending[0]['status']=='approved'
+        assert all(set(row)<= {'id','name','username','scope','expires','created','status'} for row in listing['connections'])
         time.sleep(5)
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(lambda _:poll(value),range(2)))
         assert sorted(status for status,_ in results)==[200,400],'Credential was delivered more than once'
         token=next(body for status,body in results if status==200);created_keys.append(token['key_id'])
         assert token['scope']=='read'
+        listing=check.data(session.opener,'/ui-api/keys')
+        assert any(row['id']==token['key_id'] for row in listing['results'])
+        assert not any(row['id']==pending[0]['id'] for row in listing['connections'])
+        print('PASS approved setup visible without secrets; issued connection moves to connected agents')
         identity=check.data(anonymous,'/api/v1/me',key=token['access_token'])
         assert identity['username']=='egouda' and identity['machine'] and identity['scope']=='read'
         check.data(anonymous,'/api/v1/records',{'title':'must fail','kind':'note'},key=token['access_token'],status=403)

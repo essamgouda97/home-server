@@ -294,3 +294,31 @@ Cloudflare client address, trusted only from the fixed tunnel container. A small
 JSON body limit, global request cap, expiry and polling throttle bound setup
 state. Expired setup records older than a day are cleared during new requests;
 credential and audit lifecycles remain separate.
+
+
+## Onboarding and human UI follow-up — 24 September 2026
+
+Connect agents shows approved requests immediately as “Waiting for agent to finish
+setup,” with an explicit instruction to return to the agent and confirm. It refreshes
+every five seconds while visible, without replacing unchanged controls. Failed refreshes
+are visible. The list includes only requests owned by the signed-in member (owners
+can see all owned requests), never unauthenticated unclaimed requests or code hashes.
+Expired/canceled setup attempts remain visible for up to a day after expiry; issued
+requests move into Connected agents. Confirmation never claims the agent's secret.
+
+The UI defaults to dark mode; the light/dark switch persists the person's preference.
+Analytics is an empty, data-agnostic page awaiting team-defined views. The existing
+financial aggregation API remains available for compatibility but does not populate
+the human page. Signup uses standard password-manager fields and shared strength
+validation; see [People](people.md#password-strength-and-workspace-account-replacement--24-september-2026).
+
+Pairing regression verified approved visibility, secret-free metadata, one-time
+issuance, scope restrictions and revocation. Public signup rejected repeated,
+sequential, common and name-based weak passwords without consuming the invitation.
+
+On the owner's request, all five existing documents were removed using Paperless's
+normal recoverable deletion after a consistent private snapshot. Active document
+count was verified as zero; records were preserved. Originals remain in the
+server trash and backups. The Draw flow board's pairing and Analytics boxes were
+updated, plus a dated signup/security section at the bottom; persisted content
+was read back through the Draw API.

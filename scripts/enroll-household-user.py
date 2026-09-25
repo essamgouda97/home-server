@@ -7,6 +7,7 @@ Existing accounts are refused: use a reviewed migration, not a password reset.
 import argparse,getpass,importlib.util,json,os,re,secrets,subprocess,sys,urllib.request
 from pathlib import Path
 import yaml
+from password_policy import validate_password
 ROOT=Path(__file__).resolve().parents[1]
 PRIVATE=Path.home()/'.config/home-server/secrets'
 
@@ -28,9 +29,9 @@ def main():
     assert a.username not in catalog['users'] and a.username not in users['users'],'Existing identity: refusing overwrite'
     assert a.password_stdin or sys.stdin.isatty(),'Interactive terminal required; use ssh -t'
     password=sys.stdin.readline().rstrip('\n') if a.password_stdin else getpass.getpass('New household password (hidden): ')
-    assert len(password)>=16,'Use at least 16 characters'
+    validate_password(password, a.username, a.name)
     if not a.password_stdin:
-        assert secrets.compare_digest(password,getpass.getpass('Repeat password (hidden): ')),'Passwords differ'
+        assert secrets.compare_digest(password.encode(),getpass.getpass('Repeat password (hidden): ').encode()),'Passwords differ'
     settings=json.loads(Path('/mnt/server/jellyseerr/config/settings.json').read_text()) if 'jellyfin' in grants else None
     def api(base,path,key,data=None):
         request=urllib.request.Request(base+path,data=None if data is None else json.dumps(data).encode(),headers={key[0]:key[1],'Content-Type':'application/json'})

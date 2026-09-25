@@ -12,7 +12,7 @@ The owner is `egouda` (Essam); `mgouda` remains Mariam's separate account.
 2. Copy the generated HTTPS invitation link. It appears once and expires in 24
    hours. Share it privately with the intended person. Do not put it in Git or
    public messages.
-3. The invitee opens it and creates their own password (16+ characters). The
+3. The invitee opens it and creates their own password (16–72 characters, strength score 4/4). The
    browser never sends the token in an HTTP URL: it is stored in the link
    fragment, removed from browser history on page load, then sent in the request
    body. People stores only its SHA-256 digest and never saves plaintext
@@ -76,3 +76,28 @@ anonymous owner-route denial, and access to only the public invitation page.
 Run `make check-network` on the Mac after deployment. To roll back the route,
 restore the private Nginx backup, reload Nginx, and stop the user service. Keep
 the identities and native profiles already enrolled.
+
+## Password strength and Workspace account replacement — 24 September 2026
+
+Both the public invitation handler and command-line enrollment call the shared
+`scripts/password_policy.py`: 16–72 characters, no control characters, and a
+[zxcvbn](https://github.com/dwolfhub/zxcvbn-python) score of 4. Name, username,
+combined name and common patterns are included in the local estimate. Passwords
+never leave this host for strength checking. Weak submissions do not consume the
+invitation. This estimates guessability; it does not audit existing password hashes.
+The pinned, hash-verified dependency is installed by
+`scripts/install-people-dependencies.py` outside system Python; `configure-people.py`
+runs it before bringing up People. Central password-change/reset routes stay disabled.
+
+The signup form declares a visible, read-only `autocomplete="username"` field,
+named password and confirmation fields with `autocomplete="new-password"`, and
+a POST form. These standard hints support password-manager generation and saving;
+individual browser/extensions control their own prompts.
+
+For explicitly authorized replacement of a Workspace-only member, run
+`scripts/remove-workspace-user.py USER --confirm-username USER` on the server.
+It refuses owner/family/media accounts, backs up private state, removes the
+identity, revokes old invites and API keys, denies unfinished connections, and
+restarts Authelia to invalidate browser sessions before username reuse. Shared
+documents/records remain. Then `scripts/invite-workspace-user.py USER --name NAME`
+creates a verified 24-hour one-use link in a mode-600 file outside Git.

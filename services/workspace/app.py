@@ -417,7 +417,10 @@ def keys(request: Request):
     actor = browser(request)
     with db() as c:
         rows = c.execute('SELECT id,name,username,scope,expires,created,last_used,revoked FROM keys WHERE username=? OR ? ORDER BY created DESC', (actor['username'], int(actor['owner']))).fetchall()
-    return {'results': [dict(r) for r in rows], 'owner': actor['owner']}
+        connections = c.execute(
+            "SELECT id,name,username,scope,expires,created,status FROM connections WHERE username IS NOT NULL AND (username=? OR ?) AND status IN ('approved','denied') AND expires>? ORDER BY created DESC",
+            (actor['username'], int(actor['owner']), int(time.time())-86400)).fetchall()
+    return {'results': [dict(r) for r in rows], 'connections': [dict(r) for r in connections], 'owner': actor['owner']}
 
 @app.post('/ui-api/keys', include_in_schema=False, status_code=201)
 def create_key(body: KeyBody, request: Request):
@@ -453,7 +456,7 @@ def index(request: Request):
 @app.get('/static/{name}', include_in_schema=False)
 def assets(name: str, request: Request):
     browser(request)
-    if name not in ('app.js', 'style.css'):
+    if name not in ('app.js', 'style.css', 'theme.js'):
         raise HTTPException(404)
     return FileResponse(STATIC / name)
 

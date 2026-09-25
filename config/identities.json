@@ -1,7 +1,29 @@
 {
   "version": 1,
   "users": {
-    "egouda": {"display_name": "Essam", "owner": true, "services": ["*"]},
-    "mgouda": {"display_name": "Mariam", "owner": false, "services": ["homarr", "jellyfin", "vue", "requests"]}
+    "egouda": {
+      "display_name": "Essam",
+      "owner": true,
+      "services": [
+        "*"
+      ]
+    },
+    "mgouda": {
+      "display_name": "Mariam",
+      "owner": false,
+      "services": [
+        "homarr",
+        "jellyfin",
+        "vue",
+        "requests"
+      ]
+    },
+    "agouda": {
+      "display_name": "Asser Gouda",
+      "owner": false,
+      "services": [
+        "workspace"
+      ]
+    }
   }
 }
