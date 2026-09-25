@@ -1,18 +1,34 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const state={page:'documents',document:null,record:null,documentPage:1,recordPage:1,identity:null,groups:[],connectionCode:new URLSearchParams(location.search).get('connect')||''};
+const state={page:'documents',document:null,record:null,documentPage:1,documentNext:null,documentPrevious:null,groupPage:1,groupNext:null,groupPrevious:null,recordPage:1,identity:null,groups:[],connectionCode:new URLSearchParams(location.search).get('connect')||''};
 if(state.connectionCode){history.replaceState(null,'','/#connect');}
 const text=(tag,value,cls)=>{const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;return e};
 function notice(message,error=false){$(error?'error':'notice').textContent=message;$(error?'error':'notice').hidden=!message;}
 async function call(path,options={}){const r=await fetch('/ui-api'+path,{...options,credentials:'same-origin',headers:{...(options.body && !(options.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...options.headers}});if(r.redirected||!r.headers.get('content-type')?.includes('application/json'))throw Error('Your session expired. Reload this page to sign in.');const v=await r.json();if(!r.ok)throw Error(typeof v.detail==='string'?v.detail:'Check the form fields and try again.');return v;}
-async function work(fn){$('error').hidden=true;try{await fn()}catch(e){notice(e.message,true)}}
+async function work(fn){$('error').hidden=true;try{await fn()}catch(e){if(e.name!=='AbortError')notice(e.message,true)}}
 function empty(target,title,description){target.replaceChildren();const box=text('div','', 'empty');box.append(text('strong',title),text('p',description));target.append(box)}
 function dateTime(value){return value?new Date(value*1000).toLocaleString():'Never'}
 async function route(){const page=location.hash.slice(1)||'documents';state.page=['documents','records','analytics','agents','jobs','activity','connect'].includes(page)?page:'documents';document.querySelectorAll('[data-view]').forEach(e=>e.hidden=e.dataset.view!==state.page);document.querySelectorAll('[data-page]').forEach(e=>e.setAttribute('aria-current',e.dataset.page===state.page?'page':'false'));await work(async()=>{if(state.page==='documents'){await loadGroups();await loadDocuments()}if(state.page==='records')await loadRecords();if(state.page==='agents')await loadKeys();if(state.page==='activity')await loadActivity();if(state.page==='jobs')await loadJobs();if(state.page==='connect')await loadConnection()})}
-async function loadDocuments(append=false){if(!append)state.documentPage=1;const data=await call('/documents?q='+encodeURIComponent($('document-search').value)+'&page='+state.documentPage+($('document-group').value?'&group_id='+encodeURIComponent($('document-group').value):''));if(!append)$('documents').replaceChildren();$('document-count').textContent=data.count+' documents';if(!data.count)empty($('documents'),'Start with an original','Upload a PDF, image, Office document, text file, or email (.eml). We keep the original and extract searchable text locally.');for(const doc of data.results){const row=text('div','', 'document-row');row.append(text('span',(doc.original_file_name||'file').split('.').pop().slice(0,6).toUpperCase(),'file-type'));const button=text('button',doc.title);button.append(text('small','Document '+doc.id+' · '+new Date(doc.added).toLocaleDateString()));button.onclick=()=>work(()=>openDocument(doc.id));row.append(button);$('documents').append(row)}$('document-next').hidden=!data.next;}
+let documentRequest=null,documentGeneration=0;
+async function loadDocuments(page=1){
+ if(!Number.isInteger(page))page=1;
+ const generation=++documentGeneration;documentRequest?.abort();documentRequest=new AbortController();
+ $('document-next').disabled=true;$('document-previous').disabled=true;$('documents').setAttribute('aria-busy','true');
+ try{
+ const data=await call('/documents?q='+encodeURIComponent($('document-search').value)+'&page='+page+($('document-group').value?'&group_id='+encodeURIComponent($('document-group').value):''),{signal:documentRequest.signal});
+ if(generation!==documentGeneration)return;
+ state.documentPage=page;state.documentNext=data.next;state.documentPrevious=data.previous;
+ $('documents').replaceChildren();$('document-count').textContent=data.count+' documents';
+ if(!data.count)empty($('documents'),$('document-group').value||$('document-search').value?'No matching documents':'Start with an original',$('document-group').value||$('document-search').value?'Try another search or group.':'Upload a document, or ask your agent to upload and organize your files.');
+ for(const doc of data.results){const row=text('div','','document-row');row.append(text('span',(doc.original_file_name||'file').split('.').pop().slice(0,6).toUpperCase(),'file-type'));const button=text('button',doc.title);button.append(text('small','Document '+doc.id+' · '+new Date(doc.added).toLocaleDateString()));button.onclick=()=>work(()=>openDocument(doc.id));row.append(button);$('documents').append(row)}
+ $('document-page').textContent='Page '+page;$('document-next').hidden=!data.next;$('document-previous').hidden=!data.previous;
+ }finally{if(generation===documentGeneration){$('document-next').disabled=false;$('document-previous').disabled=false;$('documents').setAttribute('aria-busy','false')}}
+}
 async function openDocument(id){const doc=await call('/documents/'+id);state.document=doc;renderDocumentGroups();$('document-title').textContent=doc.title;$('document-content').textContent=doc.content||'Text is not available yet. Processing may still be running.';$('edit-document-title').value=doc.title;$('edit-document-content').value=doc.content||'';$('download').href='/ui-api/documents/'+id+'/file';$('document-detail').hidden=false;$('document-detail').scrollIntoView({block:'start'})}
-$('document-next').onclick=()=>work(async()=>{state.documentPage++;await loadDocuments(true)});
-$('document-search').oninput=debounce(()=>work(loadDocuments),350);
+$('document-next').onclick=()=>{if(state.documentNext)work(()=>loadDocuments(state.documentNext))};
+$('document-previous').onclick=()=>{if(state.documentPrevious)work(()=>loadDocuments(state.documentPrevious))};
+const searchDocuments=debounce(()=>work(loadDocuments),400);
+$('document-search').oninput=()=>{documentRequest?.abort();++documentGeneration;$('document-next').disabled=true;$('document-previous').disabled=true;searchDocuments()};
 $('close-document').onclick=()=>{$('document-detail').hidden=true};
 $('document-edit').onsubmit=e=>{e.preventDefault();work(async()=>{await call('/documents/'+state.document.id,{method:'PATCH',body:JSON.stringify({title:$('edit-document-title').value,content:$('edit-document-content').value})});await openDocument(state.document.id);await loadDocuments();notice('Document saved.')})};
 $('upload').onchange=()=>work(async()=>{const files=[...$('upload').files];$('upload').disabled=true;try{for(const file of files){if(file.size>50*1024*1024)throw Error(file.name+' exceeds the 50 MiB upload limit.');$('upload-state').textContent='Uploading '+file.name+'…';const form=new FormData();form.append('file',file);const r=await call('/documents/upload',{method:'POST',body:form});$('upload-state').textContent=file.name+' uploaded. Extracting text…';let done=false;for(let attempt=0;attempt<80;attempt++){await new Promise(resolve=>setTimeout(resolve,3000));const value=await call('/tasks/'+r.task_id);const items=Array.isArray(value)?value:value.results||[];const task=items[0];if(task?.status==='SUCCESS'){done=true;break}if(task?.status==='FAILURE')throw Error('Processing failed for '+file.name+'. It may be a duplicate or unsupported file. Try searching for it before uploading again.')}if(!done){$('upload-state').textContent='Upload saved. Processing is still running; refresh Documents shortly.'}else{$('upload-state').textContent=file.name+' is ready.'}await loadDocuments()}}finally{$('upload').disabled=false;$('upload').value=''}});
@@ -106,20 +122,31 @@ function updateThemeButton(){const dark=document.documentElement.dataset.theme!=
 $('theme-toggle').onclick=()=>{const theme=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=theme;try{localStorage.setItem('workspace-theme',theme)}catch{}updateThemeButton()};
 updateThemeButton();
 
-async function loadGroups(){
- let page=1,groups=[];do{const data=await call('/groups?page='+page);groups.push(...data.results);page=data.next}while(page);
- state.groups=groups;
- const selected=$('document-group').value;$('document-group').replaceChildren();const all=text('option','All documents');all.value='';$('document-group').append(all);
+let groupRequest=null,groupGeneration=0;
+const groupNames=new Map();
+async function loadGroups(page=1){
+ const generation=++groupGeneration;groupRequest?.abort();groupRequest=new AbortController();
+ $('group-next').disabled=true;$('group-previous').disabled=true;
+ try{
+ const data=await call('/groups?page='+page+'&q='+encodeURIComponent($('group-search').value),{signal:groupRequest.signal});
+ if(generation!==groupGeneration)return;
+ const groups=data.results;state.groups=groups;state.groupPage=page;state.groupNext=data.next;state.groupPrevious=data.previous;
+ for(const group of groups)groupNames.set(group.id,group.name);
+ while(groupNames.size>500)groupNames.delete(groupNames.keys().next().value);
+ $('group-next').hidden=!data.next;$('group-previous').hidden=!data.previous;$('group-page').textContent='Page '+page+' · '+data.count+' groups';
+ const selected=$('document-group').value,selectedName=$('document-group').selectedOptions[0]?.textContent;$('document-group').replaceChildren();const all=text('option','All documents');all.value='';$('document-group').append(all);
  for(const group of groups){const option=text('option',group.name);option.value=group.id;$('document-group').append(option)}
- $('document-group').value=groups.some(g=>String(g.id)===selected)?selected:'';
+ if(selected&&!groups.some(g=>String(g.id)===selected)){const kept=text('option',selectedName);kept.value=selected;$('document-group').append(kept)}$('document-group').value=selected;
  $('group-list').replaceChildren();
  for(const group of groups){const form=text('form','','actions'),label=text('label','Group name'),input=document.createElement('input'),button=text('button','Rename');input.value=group.name;input.required=true;input.maxLength=100;input.setAttribute('aria-label','Rename '+group.name);label.append(input);button.type='submit';form.append(label,button);form.onsubmit=e=>{e.preventDefault();work(async()=>{await call('/groups/'+group.id,{method:'PATCH',body:JSON.stringify({name:input.value})});await loadGroups();notice('Group renamed.')})};$('group-list').append(form)}
  if(state.document)renderDocumentGroups();
+ }finally{if(generation===groupGeneration){$('group-next').disabled=false;$('group-previous').disabled=false}}
 }
 function renderDocumentGroups(){
  $('document-groups').replaceChildren();$('document-group-add').replaceChildren();
  const memberships=new Set(state.document?.tags||[]);
- for(const group of state.groups){if(memberships.has(group.id)){const button=text('button',group.name+' ×');button.setAttribute('aria-label','Remove from '+group.name);button.onclick=()=>work(async()=>{await call('/groups/'+group.id+'/documents/'+state.document.id,{method:'DELETE'});await openDocument(state.document.id);await loadDocuments();notice('Document removed from group.')});$('document-groups').append(button)}else{const option=text('option',group.name);option.value=group.id;$('document-group-add').append(option)}}
+ for(const id of memberships){const name=groupNames.get(id)||'Group '+id;const button=text('button',name+' ×');button.setAttribute('aria-label','Remove from '+name);button.onclick=()=>work(async()=>{await call('/groups/'+id+'/documents/'+state.document.id,{method:'DELETE'});await openDocument(state.document.id);await loadDocuments();notice('Document removed from group.')});$('document-groups').append(button)}
+ for(const group of state.groups){if(!memberships.has(group.id)){const option=text('option',group.name);option.value=group.id;$('document-group-add').append(option)}}
  if(!memberships.size)$('document-groups').append(text('p','Not in a group yet.','muted'));
  $('document-group-form').hidden=!$('document-group-add').options.length;
 }
@@ -127,3 +154,8 @@ $('document-group').onchange=()=>work(loadDocuments);
 $('manage-groups').onclick=()=>{$('group-manager').hidden=!$('group-manager').hidden};
 $('group-create').onsubmit=e=>{e.preventDefault();work(async()=>{await call('/groups',{method:'POST',body:JSON.stringify({name:$('group-name').value})});$('group-name').value='';await loadGroups();notice('Group created.')})};
 $('document-group-form').onsubmit=e=>{e.preventDefault();work(async()=>{await call('/groups/'+$('document-group-add').value+'/documents/'+state.document.id,{method:'POST'});await openDocument(state.document.id);notice('Document added to group.')})};
+
+$('group-next').onclick=()=>{if(state.groupNext)work(()=>loadGroups(state.groupNext))};
+$('group-previous').onclick=()=>{if(state.groupPrevious)work(()=>loadGroups(state.groupPrevious))};
+const searchGroups=debounce(()=>work(()=>loadGroups()),400);
+$('group-search').oninput=()=>{groupRequest?.abort();++groupGeneration;$('group-next').disabled=true;$('group-previous').disabled=true;searchGroups()};

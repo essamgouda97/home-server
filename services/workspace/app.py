@@ -18,6 +18,7 @@ import httpx
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, ConfigDict
+from query_limits import QueryBudget, plain_search, MAX_PAGE, MAX_PAGE_SIZE, LIST_BYTES, LIST_SECONDS
 
 DATA = Path(os.environ.get('WORKSPACE_DATA', '/data'))
 POLICY = Path(os.environ.get('WORKSPACE_POLICY', '/policy/identities.json'))
@@ -29,6 +30,7 @@ MAX_UPLOAD = 50 * 1024 * 1024
 RATE = defaultdict(deque)
 INGEST_LOCK = asyncio.Semaphore(2)
 JOB_LOCK = asyncio.Lock()
+QUERY_BUDGET = QueryBudget()
 METRICS = defaultdict(float, {key:0.0 for key in ('requests_total','request_seconds_total','errors_total','auth_denials_total','uploaded_bytes_total','uploads_total')})
 
 @contextmanager
@@ -71,7 +73,9 @@ async def lifespan(app):
         CREATE INDEX IF NOT EXISTS audit_object ON audit(object_id,id);
         CREATE INDEX IF NOT EXISTS records_date ON records(date,kind);
         ''')
-    app.state.http = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), follow_redirects=False)
+    app.state.http = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=5, pool=2),
+                                     limits=httpx.Limits(max_connections=8, max_keepalive_connections=4),
+                                     follow_redirects=False)
     yield
     await app.state.http.aclose()
 
@@ -130,7 +134,28 @@ def paperless_headers():
     return {'Authorization': 'Token ' + (PRIVATE / 'paperless-token').read_text().strip()}
 
 async def paperless(method, path, **kwargs):
-    response = await app.state.http.request(method, PAPERLESS + '/api/' + path.lstrip('/'), headers=paperless_headers(), **kwargs)
+    max_bytes = kwargs.pop('max_bytes', None)
+    deadline = kwargs.pop('deadline', LIST_SECONDS)
+    try:
+        if max_bytes is None:
+            response = await app.state.http.request(method, PAPERLESS + '/api/' + path.lstrip('/'), headers=paperless_headers(), **kwargs)
+        else:
+            async with asyncio.timeout(deadline):
+                async with app.state.http.stream(method, PAPERLESS + '/api/' + path.lstrip('/'), headers=paperless_headers(), **kwargs) as upstream:
+                    body = bytearray()
+                    async for chunk in upstream.aiter_bytes(chunk_size=65536):
+                        if len(body)+len(chunk)>max_bytes:
+                            raise HTTPException(502, 'Document list exceeded its response limit; narrow the query')
+                        body.extend(chunk)
+                    # aiter_bytes already decoded compression; do not decode it
+                    # a second time when constructing the bounded response.
+                    headers = {key:value for key,value in upstream.headers.items()
+                               if key.lower() not in ('content-encoding','content-length','transfer-encoding')}
+                    response = httpx.Response(upstream.status_code, content=bytes(body), headers=headers)
+    except (TimeoutError, httpx.TimeoutException):
+        raise HTTPException(504, 'Document query timed out; narrow the search and retry later', headers={'Retry-After':'30'})
+    except httpx.RequestError:
+        raise HTTPException(502, 'Document engine unavailable; retry later', headers={'Retry-After':'5'})
     if response.status_code >= 400:
         # Upstream response bodies can contain document contents or internal details.
         raise HTTPException(response.status_code if response.status_code < 500 else 502,
@@ -197,7 +222,7 @@ def discovery():
             'authentication': {'type': 'bearer', 'header': 'Authorization', 'verify': ORIGIN + '/api/v1/me', 'key_creation': ORIGIN + '/#agents', 'agent_setup': ORIGIN + '/api/v1/connections'},
             'onboarding': {'recommended': 'agent-initiated browser confirmation', 'start': ORIGIN + '/api/v1/connections', 'poll': ORIGIN + '/api/v1/connections/token', 'requires_existing_api_key': False, 'requires_invited_human': True},
             'integration': {'protocol': 'REST', 'mcp': False, 'schema_version': '1.0.0'},
-            'limits': {'upload_bytes': MAX_UPLOAD, 'requests_per_minute_per_key': 120, 'script_seconds': 60},
+            'limits': {'upload_bytes': MAX_UPLOAD, 'requests_per_minute_per_key': 120, 'script_seconds': 60, 'list_page_size_max': MAX_PAGE_SIZE, 'list_page_max': MAX_PAGE, 'search_characters_max': 200, 'document_queries_per_minute_per_user':60, 'document_queries_concurrent':2, 'list_response_bytes_max':LIST_BYTES, 'query_seconds':LIST_SECONDS},
             'capabilities': ['upload', 'local OCR', 'search', 'read originals', 'structured records', 'analytics', 'sandboxed Python scripts'],
             'sharing': 'Every invited member can read and edit the entire workspace.'}
 
@@ -214,13 +239,19 @@ def me(actor=Depends(identity)):
     return actor
 
 @api.get('/documents')
-async def documents(q: str = '', page: int = Query(1, ge=1), group_id: int | None = Query(None, ge=1), actor=Depends(identity)):
-    params = {'page': page, 'page_size': 30, 'ordering': '-added'}
-    if q:
-        params['query'] = q[:500]
+async def documents(q: str = Query('', max_length=200), page: int = Query(1, ge=1, le=MAX_PAGE), page_size: int = Query(30, ge=1, le=MAX_PAGE_SIZE), group_id: int | None = Query(None, ge=1), actor=Depends(identity)):
+    params = {'page': page, 'page_size': page_size, 'ordering': '-id', 'fields':'id,title,original_file_name,added,tags'}
+    query = plain_search(q)
+    if query:
+        params['query'] = query
     if group_id is not None:
         params['tags__id'] = group_id
-    result = (await paperless('GET', 'documents/', params=params)).json()
+    async with QUERY_BUDGET.admit(actor['username']):
+        result = (await paperless('GET', 'documents/', params=params, max_bytes=LIST_BYTES)).json()
+    fields = ('id','title','original_file_name','added','tags')
+    result['results'] = [{key:item[key] for key in fields if key in item} for item in result['results'][:page_size]]
+    if page==MAX_PAGE and result.get('next'):
+        raise HTTPException(422, 'This query spans too many pages; narrow it with a search or group')
     result['next'] = page + 1 if result.get('next') else None
     result['previous'] = page - 1 if result.get('previous') else None
     return result
@@ -258,7 +289,8 @@ async def task(task_id: uuid.UUID, actor=Depends(identity)):
 
 @api.get('/documents/{document_id}')
 async def document(document_id: int, actor=Depends(identity)):
-    return (await paperless('GET', f'documents/{document_id}/')).json()
+    async with QUERY_BUDGET.admit(actor['username']):
+        return (await paperless('GET', f'documents/{document_id}/', max_bytes=8*1024*1024)).json()
 
 class DocumentEdit(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -407,7 +439,7 @@ def analytics(actor=Depends(identity)):
             'basis': 'All active income and expense records. Currencies are never combined. Parsed data may contain errors.'}
 
 from groups import register as register_groups
-register_groups(api, identity, require_write, paperless, db, audit)
+register_groups(api, identity, require_write, paperless, db, audit, QUERY_BUDGET)
 app.include_router(api, prefix='/api/v1')
 app.include_router(api, prefix='/ui-api', include_in_schema=False)
 

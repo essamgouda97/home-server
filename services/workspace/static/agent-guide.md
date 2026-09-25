@@ -100,3 +100,24 @@ can belong to multiple groups; membership does not copy or move its original.
 Membership calls are idempotent and preserve other groups. All mutations require
 write scope and are audited. Groups organize the shared workspace; they do not
 restrict who can read documents. Choose meaningful groups from the user's task.
+
+## Bounded browsing and search
+
+Document and group lists return one page only: `page_size` defaults to 30 and
+accepts 1–30; `page` accepts 1–1000. Follow numeric `next` / `previous` values,
+and stop at null. Narrow by group or search before reaching the page ceiling.
+Document lists contain metadata only (`id`, `title`, `original_file_name`, `added`,
+`tags`); use `GET /documents/{id}` to read extracted text individually.
+
+Document `q` accepts at most 200 characters, 12 words, 64 characters per word.
+Words are searched literally with AND; wildcard, field, fuzzy and other advanced
+query syntax is rejected with 422. Group `q` matches names, up to 100 characters.
+
+Document/group lists and individual document reads share two concurrent slots and
+60 requests/minute per user, across the browser and all that user's API keys.
+Busy requests return 429 immediately; honor `Retry-After`. Reads have a ten-second
+deadline. A timeout returns 504 and triggers a 30-second global cooldown (503),
+because canceling the client request cannot guarantee cancellation upstream.
+List responses are capped at 1 MiB; individual document JSON at 8 MiB.
+A response exceeding the cap returns 502; narrow a list query or download a large
+original instead. Fetch pages sequentially, with no aggressive automatic retries.

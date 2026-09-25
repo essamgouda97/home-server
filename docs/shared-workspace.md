@@ -355,3 +355,35 @@ provides a group filter, create/rename controls, and membership controls.
 
 The [editable architecture board](https://draw.home.egouda.xyz/?board=muggkm91mb1c1gre3qp)
 includes a persisted groups/expiry section at the bottom, verified through Draw's API.
+
+### Bounded document loading — 24 September 2026
+
+Both UI and agent listings validate page 1–1000 and page_size 1–30. Document
+lists request only metadata from Paperless and allowlist those response fields;
+full extracted content is read individually. Ordering by descending ID is
+deterministic. Offset pages are not a frozen snapshot: concurrent uploads or
+deletions can shift membership between pages, so agents should deduplicate IDs.
+
+Literal full-text search permits up to 200 characters / 12 words / 64 characters
+per word and rejects advanced/wildcard syntax before contacting Paperless. Group
+name search is bounded to 100 characters. Document/group lists and document reads
+share two slots and 60 requests/minute per authenticated username, including
+browser traffic and multiple API keys. Excess traffic fails fast with 429 plus
+Retry-After; there is no unbounded waiting queue. Ten-second client deadlines,
+1 MiB list responses and 8 MiB document JSON responses cap application work.
+A timeout creates a 30-second global cooldown with 503/Retry-After because
+upstream cancellation is not guaranteed. Paperless retains its 2 CPU / 2 GiB
+container limits; Workspace now has 1 CPU / 384 MiB and an eight-connection
+upstream pool. This is a bounded-work design, not a guarantee against all failures.
+
+The UI replaces each document/group page rather than appending or prefetching
+the entire dataset. Next/Previous controls disable during requests; pages advance
+only after success. Search cancellation and generation checks prevent old replies
+from replacing newer results. Group-name hints are bounded to 500 cached entries.
+
+Verification uses `services/workspace/test_query_limits.py` in a network-disabled
+disposable container with synthetic HTTP transport (no real documents), plus
+`node services/workspace/test_pagination.cjs`. Covers 65 documents across three
+pages, metadata filtering, invalid parameters before upstream access, shared
+rate limits, concurrent admission, byte caps, timeout cooldown/recovery, bounded
+UI rendering, failed-page recovery, stale replies and single-page group loading.

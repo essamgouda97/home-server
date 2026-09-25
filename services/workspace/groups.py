@@ -2,12 +2,13 @@
 import asyncio
 from fastapi import Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
+from query_limits import MAX_PAGE, MAX_PAGE_SIZE, LIST_BYTES
 
 class GroupBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: str = Field(min_length=1, max_length=100)
 
-def register(api, identity, require_write, paperless, db, audit):
+def register(api, identity, require_write, paperless, db, audit, query_budget):
     lock = asyncio.Lock()
 
     def group(value):
@@ -20,9 +21,15 @@ def register(api, identity, require_write, paperless, db, audit):
         return value
 
     @api.get('/groups')
-    async def list_groups(page: int = Query(1, ge=1), actor=Depends(identity)):
-        value = (await paperless('GET', 'tags/', params={'page':page,'page_size':100,'ordering':'name'})).json()
-        return {'count':value['count'], 'results':[group(v) for v in value['results']], 'next':page+1 if value.get('next') else None}
+    async def list_groups(page: int = Query(1, ge=1, le=MAX_PAGE), page_size: int = Query(30, ge=1, le=MAX_PAGE_SIZE), q: str = Query('', max_length=100), actor=Depends(identity)):
+        params={'page':page,'page_size':page_size,'ordering':'name,id','fields':'id,name,document_count'}
+        if q.strip():
+            params['name__icontains']=q.strip()
+        async with query_budget.admit(actor['username']):
+            value = (await paperless('GET', 'tags/', params=params, max_bytes=LIST_BYTES)).json()
+        if page==MAX_PAGE and value.get('next'):
+            raise HTTPException(422, 'This query spans too many pages; narrow the group search')
+        return {'count':value['count'], 'results':[group(v) for v in value['results'][:page_size]], 'next':page+1 if value.get('next') else None, 'previous':page-1 if value.get('previous') else None}
 
     @api.post('/groups', status_code=201)
     async def create_group(body: GroupBody, actor=Depends(identity)):
