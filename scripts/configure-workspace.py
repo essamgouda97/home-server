@@ -24,7 +24,7 @@ from rest_framework.authtoken.models import Token
 u,created=User.objects.get_or_create(username='workspace-service')
 if created:u.set_unusable_password()
 u.is_staff=False;u.is_superuser=False;u.save()
-u.user_permissions.set(Permission.objects.filter(codename__in=['add_document','change_document','view_document','view_paperlesstask']))
+u.user_permissions.set(Permission.objects.filter(codename__in=['add_document','change_document','view_document','view_paperlesstask','add_tag','change_tag','view_tag']))
 t,_=Token.objects.get_or_create(user=u)
 print('WORKSPACE_TOKEN='+t.key)
 '''

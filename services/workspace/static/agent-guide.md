@@ -83,3 +83,20 @@ Agents with HTTP tools can use it directly. An agent product that only supports
 MCP needs an adapter; a product supporting OpenAPI actions can import the schema.
 
 If your runtime waits for a human reply, explicitly ask them to return and say “Confirmed — finish setup.” Human approval alone does not issue a credential; resume polling the token endpoint afterward.
+
+## Group documents
+
+Groups are shared collections backed by the document engine's tags. A document
+can belong to multiple groups; membership does not copy or move its original.
+
+- `GET /api/v1/groups?page=1`: list group IDs/names; follow numeric `next`.
+- `POST /api/v1/groups` with `{"name":"Project Alpha"}`: create a group.
+- `PATCH /api/v1/groups/{group_id}` with `{"name":"New name"}`: rename it.
+- `POST /api/v1/groups/{group_id}/documents/{document_id}`: add membership.
+- `DELETE /api/v1/groups/{group_id}/documents/{document_id}`: remove membership.
+- `GET /api/v1/documents?group_id=123`: list that group's documents; combine
+  with `q` and follow `next` for pagination. Document `tags` contains group IDs.
+
+Membership calls are idempotent and preserve other groups. All mutations require
+write scope and are audited. Groups organize the shared workspace; they do not
+restrict who can read documents. Choose meaningful groups from the user's task.

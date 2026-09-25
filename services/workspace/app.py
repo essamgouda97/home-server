@@ -214,10 +214,12 @@ def me(actor=Depends(identity)):
     return actor
 
 @api.get('/documents')
-async def documents(q: str = '', page: int = Query(1, ge=1), actor=Depends(identity)):
+async def documents(q: str = '', page: int = Query(1, ge=1), group_id: int | None = Query(None, ge=1), actor=Depends(identity)):
     params = {'page': page, 'page_size': 30, 'ordering': '-added'}
     if q:
         params['query'] = q[:500]
+    if group_id is not None:
+        params['tags__id'] = group_id
     result = (await paperless('GET', 'documents/', params=params)).json()
     result['next'] = page + 1 if result.get('next') else None
     result['previous'] = page - 1 if result.get('previous') else None
@@ -404,6 +406,8 @@ def analytics(actor=Depends(identity)):
             'categories': [{'category': k[0], 'currency': k[1], 'kind': k[2], 'amount': str(v)} for k,v in sorted(categories.items())],
             'basis': 'All active income and expense records. Currencies are never combined. Parsed data may contain errors.'}
 
+from groups import register as register_groups
+register_groups(api, identity, require_write, paperless, db, audit)
 app.include_router(api, prefix='/api/v1')
 app.include_router(api, prefix='/ui-api', include_in_schema=False)
 

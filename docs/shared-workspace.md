@@ -322,3 +322,36 @@ count was verified as zero; records were preserved. Originals remain in the
 server trash and backups. The Draw flow board's pairing and Analytics boxes were
 updated, plus a dated signup/security section at the bottom; persisted content
 was read back through the Draw API.
+
+### Agent credential expiry notices
+
+Every Workspace page shows an in-app notice during the seven days before a
+non-revoked key expires, naming the agent, its owner and exact expiry. Recently
+expired keys remain highlighted for seven days; Connect agents also shows their
+status even with disconnected agents hidden. Members see their own credentials;
+the owner can see all, using the existing key-list authorization. Notices refresh
+every minute on visible pages and every five seconds on Connect agents.
+Reconnect through the normal approved pairing flow, verify the new connection,
+then revoke the old key. No automatic extension or credential issuance occurs.
+These are in-app notices; email/push delivery is not configured.
+
+### Shared document groups
+
+Groups reuse Paperless tags, avoiding a second membership database. The app's
+private service identity has only add/change/view tag permissions alongside its
+existing document permissions. GET/POST `/groups`, PATCH `/groups/{group_id}`,
+and POST/DELETE `/groups/{group_id}/documents/{document_id}` expose organization
+to agents and the UI. `GET /documents?group_id=ID` filters membership.
+Documents can belong to multiple groups with no original-file duplication.
+
+Create/rename/membership edits require write scope and emit audit entries.
+Membership changes are idempotent and serialized inside the single app worker
+to preserve unrelated groups. If scaling to multiple workers, replace this lock
+with a shared lock before enabling concurrent membership writers. Group creation
+disables automatic text matching. Groups do not create access boundaries; every
+invited Workspace member can read all shared documents. OpenAPI and the agent
+guide document the stable operation IDs and numeric pagination. The Documents UI
+provides a group filter, create/rename controls, and membership controls.
+
+The [editable architecture board](https://draw.home.egouda.xyz/?board=muggkm91mb1c1gre3qp)
+includes a persisted groups/expiry section at the bottom, verified through Draw's API.

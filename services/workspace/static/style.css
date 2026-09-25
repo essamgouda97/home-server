@@ -13,3 +13,5 @@
 :root[data-theme="dark"]{color-scheme:dark;--bg:oklch(.18 .008 145);--surface:oklch(.225 .010 145);--ink:oklch(.94 .008 145);--muted:oklch(.76 .014 145);--line:oklch(.40 .018 145);--accent:oklch(.79 .11 145);--tint:oklch(.31 .038 145);--danger:oklch(.79 .13 25);--button-bg:oklch(.79 .11 145);--button-hover:oklch(.85 .10 145);--button-ink:oklch(.18 .008 145)}
 #theme-toggle{font-size:12px;min-height:36px;padding:7px 10px;white-space:nowrap}
 @media(max-width:700px){header{height:auto;min-height:65px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}}
+
+.expiry-warning{padding:18px 20px;margin-bottom:24px;border:1px solid var(--accent);border-left-width:4px;border-radius:6px;background:var(--surface);color:var(--ink);font-size:14px;line-height:1.65;overflow-wrap:anywhere}.expiry-warning ul{padding-left:22px;margin:10px 0}.expiry-warning p{max-width:70ch;margin:10px 0}.expiry-warning a{font-weight:600}
