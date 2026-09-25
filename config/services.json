@@ -836,6 +836,29 @@
         308,
         401
       ]
+    },
+    {
+      "id": "workspace",
+      "title": "Shared Workspace",
+      "url": "https://workspace.egouda.xyz/",
+      "probe_url": "https://workspace.egouda.xyz/.well-known/agent.json",
+      "credential": "auth",
+      "category": "Collaboration",
+      "auth": {
+        "mode": "gateway",
+        "access": "household",
+        "adapter": "gateway"
+      },
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/docker.svg",
+      "expected_status": [
+        200,
+        301,
+        302,
+        303,
+        307,
+        308,
+        401
+      ]
     }
   ]
 }

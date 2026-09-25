@@ -48,6 +48,9 @@ for line in Path('/proc/net/dev').read_text().splitlines()[2:]:
 catalog=json.loads((Path(__file__).resolve().parents[1]/'config/services.json').read_text())['services']
 services={s['id']:s for s in catalog}
 services['home']={'url':'https://home.egouda.xyz/','expected_status':[200,302,307]}
+# Public Workspace checks use IPv4; host IPv6 egress is deliberately blocked.
+from auth_session import prefer_ipv4
+prefer_ipv4()
 def probe(service):
  url=services[service]['url'];start=time.monotonic()
  try:

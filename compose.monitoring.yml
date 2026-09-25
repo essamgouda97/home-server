@@ -40,6 +40,7 @@ services:
     volumes:
       - ./config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./config/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./config/monitoring/workspace-alerts.yml:/etc/prometheus/workspace-alerts.yml:ro
       - /srv/mergerfs/ssd/monitoring/prometheus:/prometheus
     networks: [metrics]
   node-exporter:

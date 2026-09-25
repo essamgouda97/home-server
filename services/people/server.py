@@ -24,7 +24,7 @@ from identity_policy import identities
 PRIVATE=Path.home()/'.config/home-server/secrets/people'
 STATIC=Path(__file__).with_name('static')
 OWNER_HOST='people.home.egouda.xyz'
-ALLOWED={'homarr','jellyfin','vue','requests','files'}
+ALLOWED={'homarr','jellyfin','vue','requests','files','workspace'}
 
 def atomic_json(path,data):
     path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
@@ -120,7 +120,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError('An invitation is already pending for this username')
             store['invitations'][digest]={'username':username,'name':name,'services':grants,'created':int(time.time()),'expires':int(time.time()+86400),'status':'pending'}
             atomic_json(PRIVATE/'invitations.json',store)
-        return self.respond(201,{'url':'https://'+OWNER_HOST+'/join/#'+token,'expires_hours':24})
+        return self.respond(201,{'url':('https://workspace.egouda.xyz' if 'workspace' in grants else 'https://'+OWNER_HOST)+'/join/#'+token,'expires_hours':24})
     def lookup_invite(self,body):
         token=body.get('token','')
         if not isinstance(token,str) or len(token)>128:return self.respond(404,{'error':'Invitation unavailable'})

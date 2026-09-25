@@ -53,3 +53,21 @@ Grafana's native login. Both sessions are exercised by `check-monitoring.py`.
 The Mac vault check uses `vault.py --with-gateway exec metrics -- python3
 scripts/check-metrics-from-vault.py`, explicitly injecting the two required
 credentials. Desktop authorization is required by 1Password.
+
+
+## Shared Workspace — 24 September 2026
+
+[Shared Workspace dashboard](https://metrics.home.egouda.xyz/d/shared-workspace)
+uses the existing `home-prometheus` datasource. All 24 panels were verified with
+an actual Grafana HTTPS login and live queries. Independent
+`home-workspace-metrics.timer` publishes aggregate application, document, key,
+script, storage and freshness metrics through the existing textfile collector.
+Existing host/container metrics provide CPU, memory, load and restart information.
+The collector prefers IPv4 for the deliberately IPv6-blocked host's public probes.
+
+`workspace-alerts.yml` adds availability, telemetry, script failure and backup-age
+alerts without replacing existing rules. Nightly consistent backups expose their
+last verified success; they are local snapshots, not off-server disaster recovery.
+No document titles/content, monetary values, usernames or credentials enter these
+metrics. See [Workspace operations](shared-workspace.md) and its
+[architecture/flow board](https://draw.home.egouda.xyz/?board=muggkm91mb1c1gre3qp).

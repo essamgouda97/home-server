@@ -14,12 +14,16 @@ def response(opener,url,headers=None):
     except urllib.error.HTTPError as error:return error
 
 def main():
+    from auth_session import prefer_ipv4
+    prefer_ipv4()
     anonymous=urllib.request.build_opener(NoRedirect)
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--staged',action='store_true');args=parser.parse_args()
     password=None
     if args.staged:password=json.loads((Path.home()/'.config/home-server/secrets/pending-service-passwords.json').read_text())['auth']
-    with AuthSession(password=password) as session:
+    with AuthSession(password=password) as session, AuthSession(password=password,portal='https://signin.egouda.xyz',target_url='https://workspace.egouda.xyz') as public_session:
         for host,entry in services().items():
+            portal='https://signin.egouda.xyz' if host=='workspace.egouda.xyz' else PORTAL
+            current=public_session if host=='workspace.egouda.xyz' else session
             with response(anonymous,entry['url'],{'Remote-User':'egouda','X-Forwarded-User':'egouda','X-Forwarded-Groups':'owners','X-Auth-Request-User':'egouda'}) as r:
                 # Root paths may redirect to the app's actual path before access phase.
                 for _ in range(4):
@@ -28,12 +32,12 @@ def main():
                     from urllib.parse import urljoin
                     r.close()
                     r=response(anonymous,urljoin(entry['url'],location))
-                assert r.status==302 and r.headers.get('Location','').startswith(PORTAL+'/'),(entry['id'],'missing central sign-in')
+                assert r.status==302 and r.headers.get('Location','').startswith(portal+'/'),(entry['id'],'missing central sign-in')
                 assert not r.headers.get('WWW-Authenticate'),(entry['id'],'browser Basic prompt remains')
-            with response(session.no_redirect,entry['url']) as r:
+            with response(current.no_redirect,entry['url']) as r:
                 assert r.status in (200,301,302,303,307,308), (entry['id'],'authenticated app unavailable',r.status)
                 assert not r.headers.get('WWW-Authenticate')
-                assert not r.headers.get('Location','').startswith(PORTAL+'/'),(entry['id'],'session not shared')
+                assert not r.headers.get('Location','').startswith(portal+'/'),(entry['id'],'session not shared')
             print('PASS central sign-in, spoof rejection and owner session:',entry['id'])
         cookies=list(session.cookies)
         assert any(c.name=='home_session' and c.secure and c.has_nonstandard_attr('HttpOnly') for c in cookies)

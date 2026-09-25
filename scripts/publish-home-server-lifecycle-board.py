@@ -104,11 +104,17 @@ def main():
         existing=next((t for t in tenants if t['name']==TITLE),None)
         if existing:
             saved=api('/api/elements',board=existing['id'])['elements']
-            if saved:
+            if saved and not globals().get('APPEND_TO_EXISTING',False):
                 print('Preserved existing board:',TITLE,'('+str(len(saved))+' elements)')
                 print(ORIGIN+'/?board='+existing['id'])
                 return
         board=existing or api('/api/boards',{'name':TITLE})['tenant']
+        if existing and globals().get('APPEND_TO_EXISTING',False):
+            saved_ids={e.get('id') for e in saved}
+            elements=[e for e in elements if e.get('id') not in saved_ids]
+            if not elements:
+                print('PASS verified existing editable board:',ORIGIN+'/?board='+board['id'])
+                return
         process=subprocess.Popen(['docker','exec','-i','excalidraw','node','dist/index.js'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
         sequence=0
         def rpc(method,params):
@@ -130,7 +136,8 @@ def main():
             process.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized'})+'\n')
             process.stdin.flush()
             rpc('tools/call',{'name':'switch_tenant','arguments':{'tenantId':board['id']}})
-            rpc('tools/call',{'name':'batch_create_elements','arguments':{'elements':elements}})
+            for offset in range(0,len(elements),20):
+                rpc('tools/call',{'name':'batch_create_elements','arguments':{'elements':elements[offset:offset+20]}})
             saved=api('/api/elements',board=board['id'])['elements']
             if len(saved)<len(elements):raise RuntimeError('Board was not fully persisted')
             print('PASS saved editable board:',TITLE,'('+str(len(saved))+' elements)')

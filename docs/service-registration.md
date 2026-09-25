@@ -85,3 +85,14 @@ Every new browser route declares an owner/household gateway policy; see
 identity adapter contract. Registration defaults to owner-only and the central
 `auth` credential. `--sync` will not publish a tile until auth deployment and route
 checks succeed. The current inventory includes 35 browser applications.
+
+
+## Public Workspace exception — 24 September 2026
+
+`workspace.egouda.xyz` is explicitly admitted by the catalog validator and shared
+gateway compiler. Its household policy still requires the `workspace` grant; it
+is not accessible to every household account automatically. Homarr probes its
+public discovery document, and the existing collector checks the public login
+route using IPv4. The named tunnel publishes Workspace and its central sign-in
+alias only. See [Shared Workspace](shared-workspace.md) for agent-first onboarding,
+API authentication, persistent storage and the verified architecture board.

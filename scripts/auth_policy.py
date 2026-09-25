@@ -5,6 +5,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT=Path(__file__).resolve().parents[1]
+PUBLIC_HOSTS={'workspace.egouda.xyz'}
+PORTAL_HOSTS={'auth.home.egouda.xyz','signin.egouda.xyz'}
 INCLUDE='/data/nginx/custom/home-auth'
 MARKER='# home-auth-managed'
 UPSTREAM_BASIC={
@@ -17,7 +19,7 @@ def services():
     result={}
     for entry in entries:
         url=urlsplit(entry['url']);host=url.hostname
-        if url.scheme!='https' or not host or not (host=='home.egouda.xyz' or host.endswith('.home.egouda.xyz')) or url.username or url.query:
+        if url.scheme!='https' or not host or not (host=='home.egouda.xyz' or host.endswith('.home.egouda.xyz') or host in PUBLIC_HOSTS) or url.username or url.query:
             raise ValueError('Invalid household browser URL: '+entry['id'])
         policy=entry.get('auth',{})
         if policy.get('mode')!='gateway' or policy.get('access') not in ('owner','household') or policy.get('adapter') not in ('gateway','native','trusted-header','oidc','upstream-basic'):
@@ -68,7 +70,7 @@ def render(text, policies=None):
                     body='\n    # home-auth-redirect\n    return 308 https://'+host+'$request_uri;\n'+body
                     changes.append((start+1,end,body))
             continue
-        if hosts==['auth.home.egouda.xyz']:continue
+        if len(hosts)==1 and hosts[0] in PORTAL_HOSTS:continue
         if not all(host in policies for host in hosts):
             raise ValueError('HTTPS host is not registered for authentication: '+','.join(hosts))
         covered.update(hosts)
@@ -100,6 +102,53 @@ def render(text, policies=None):
             # check. All browser routes retain the household gateway policy.
             for endpoint in ('context','snapshot','events'):
                 body+='\n    location = /api/device/'+endpoint+' {\n        auth_request off;\n        include '+INCLUDE+'/identity.conf;\n        set $coach_device_backend http://health-coach:8099;\n        proxy_pass $coach_device_backend;\n        proxy_set_header Host $host;\n        proxy_set_header X-Forwarded-Proto https;\n    }\n'
+        if hosts==['workspace.egouda.xyz']:
+            # Explicit machine/discovery/join paths. Agent paths require a valid
+            # scoped key in the backend; a header's presence never grants access.
+            body += r'''
+    location ~ ^/api/v1/connections(?:/token)?$ {
+        auth_request off;
+        limit_req zone=workspace_connect burst=10 nodelay;
+        limit_req_status 429;
+        client_max_body_size 4k;
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header X-Workspace-Proxy-Key "";
+        proxy_set_header Host $host;
+        set $workspace_backend http://shared-workspace:8080;
+        proxy_pass $workspace_backend;
+    }
+    location /api/v1/ {
+        auth_request off;
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header X-Workspace-Proxy-Key "";
+        proxy_set_header Host $host;
+        set $workspace_backend http://shared-workspace:8080;
+        proxy_pass $workspace_backend;
+        proxy_read_timeout 100s;
+    }
+    location ~ ^/(\.well-known/agent\.json|agent-guide\.md|llms\.txt|openapi\.json)$ {
+        auth_request off;
+        proxy_set_header Remote-User "";
+        proxy_set_header X-Workspace-Proxy-Key "";
+        set $workspace_backend http://shared-workspace:8080;
+        proxy_pass $workspace_backend;
+    }
+    location ^~ /join/ {
+        auth_request off;
+        if ($workspace_join_ok = 0) { return 403; }
+        include /data/nginx/custom/home-server/people-key.conf;
+        proxy_set_header Host people.home.egouda.xyz;
+        proxy_set_header Origin https://people.home.egouda.xyz;
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_pass http://172.18.0.1:8766;
+        proxy_read_timeout 190s;
+    }
+    location /internal/ { auth_request off; return 404; }
+    location = /health { auth_request off; return 404; }
+'''
         if hosts==['people.home.egouda.xyz']:
             # The only unauthenticated browser path is a one-use bearer invite.
             # The backend validates its 256-bit token and never accepts client

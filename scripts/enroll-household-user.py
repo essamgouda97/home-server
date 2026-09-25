@@ -21,7 +21,7 @@ def main():
     p.add_argument('--services',default='homarr,jellyfin,vue,requests')
     p.add_argument('--password-stdin',action='store_true',help='Read one password line from a protected pipe (owner-only People service)')
     a=p.parse_args();assert re.fullmatch('[a-z][a-z0-9]{2,31}',a.username),'Use a lowercase username'
-    grants=a.services.split(',');assert set(grants)<= {'homarr','jellyfin','vue','requests','files'},'No unreviewed/admin service grants'
+    grants=a.services.split(',');assert set(grants)<= {'homarr','jellyfin','vue','requests','files','workspace'},'No unreviewed/admin service grants'
     assert not ({'vue','requests'}&set(grants)) or 'jellyfin' in grants,'Media clients require a Jellyfin profile'
     config=ROOT/'config/identities.json';catalog=json.loads(config.read_text())
     users_path=PRIVATE/'authelia/users.yml';users=yaml.safe_load(users_path.read_text())
@@ -31,7 +31,7 @@ def main():
     assert len(password)>=16,'Use at least 16 characters'
     if not a.password_stdin:
         assert secrets.compare_digest(password,getpass.getpass('Repeat password (hidden): ')),'Passwords differ'
-    settings=json.loads(Path('/mnt/server/jellyseerr/config/settings.json').read_text())
+    settings=json.loads(Path('/mnt/server/jellyseerr/config/settings.json').read_text()) if 'jellyfin' in grants else None
     def api(base,path,key,data=None):
         request=urllib.request.Request(base+path,data=None if data is None else json.dumps(data).encode(),headers={key[0]:key[1],'Content-Type':'application/json'})
         with urllib.request.urlopen(request,timeout=30) as response:
@@ -58,7 +58,7 @@ def main():
     catalog['users'][a.username]={'display_name':a.name,'owner':False,'services':grants}
     config.write_text(json.dumps(catalog,indent=2)+'\n')
     run(['python3','scripts/prepare-auth.py'])
-    run(['python3','scripts/provision-homarr-identities.py'])
+    if 'homarr' in grants:run(['python3','scripts/provision-homarr-identities.py'])
     if 'jellyfin' in grants:
         # The media OIDC plugin requires an explicit stable-subject link for every
         # existing native profile; matching a name or email must never be enough.

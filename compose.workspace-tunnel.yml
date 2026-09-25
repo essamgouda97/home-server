@@ -1,0 +1,27 @@
+name: workspace-public
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+    container_name: workspace-tunnel
+    restart: unless-stopped
+    command: [tunnel, --no-autoupdate, --protocol, http2, run, --token-file, /run/secrets/tunnel-token]
+    user: '1000:1000'
+    volumes:
+      - /home/egouda/.config/home-server/secrets/workspace/tunnel-token:/run/secrets/tunnel-token:ro
+    networks:
+      ingress:
+        ipv4_address: 192.168.240.2
+      egress: {}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+networks:
+  ingress:
+    name: shared-workspace_public
+    internal: true
+    ipam:
+      config:
+        - subnet: 192.168.240.0/24
+  egress:
+    name: shared-workspace_tunnel_egress

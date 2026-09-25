@@ -1,0 +1,5 @@
+[Unit]
+Description=Shared Workspace aggregate metrics
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/workspace/home-server/scripts/workspace_metrics.py

@@ -1,0 +1,7 @@
+[Unit]
+Description=Nightly Shared Workspace recovery snapshot
+[Timer]
+OnCalendar=*-*-* 04:20:00
+Persistent=true
+[Install]
+WantedBy=timers.target

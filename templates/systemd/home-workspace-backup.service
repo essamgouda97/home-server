@@ -1,0 +1,6 @@
+[Unit]
+Description=Consistent Shared Workspace recovery snapshot
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/workspace/home-server/scripts/backup-workspace.py
+UMask=0077

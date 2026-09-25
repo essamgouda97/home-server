@@ -45,6 +45,10 @@ session:
     - domain: home.egouda.xyz
       authelia_url: https://auth.home.egouda.xyz
       default_redirection_url: https://home.egouda.xyz
+    - domain: egouda.xyz
+      name: workspace_session
+      authelia_url: https://signin.egouda.xyz
+      default_redirection_url: https://workspace.egouda.xyz
 regulation:
   max_retries: 5
   find_time: 2 minutes

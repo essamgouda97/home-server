@@ -28,3 +28,12 @@ interface familiar, practical, and quiet.
 
 Preserve native keyboard controls, visible focus, and readable labels.
 Use existing application components and responsive layouts.
+
+
+## Public shared workspace
+
+Invited partners use ordinary public HTTPS. Some are nontechnical and already
+work with an agent. The primary setup path is one copyable message, an agent-supplied
+confirmation link, and a plain-language Connect this agent button. The agent handles
+credential setup; API keys and script editors remain advanced fallbacks. Humans
+read documents and analytics; agents upload, parse and update shared records.

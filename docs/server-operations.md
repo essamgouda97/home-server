@@ -305,3 +305,19 @@ host's, and Codex's ChatGPT login remains valid after the reboot.
 Final checks after reboot: `make check-network` and `make check-server` both
 passed with zero failing checks; all 13 active Uptime Kuma monitors were up.
 There were no failed system or user services.
+
+
+## Shared Workspace — 24 September 2026
+
+Public collaboration is available at `https://workspace.egouda.xyz`, with the
+central sign-in alias `https://signin.egouda.xyz`. Partners need no Tailscale;
+owner administration and Grafana stay private. Agent-first setup uses one pasted
+message followed by a central browser confirmation. Subsequent uploads, sandboxed
+Python parsing and record updates run without human review.
+
+See [Shared Workspace](shared-workspace.md) for the reproducible Compose setup,
+SSD storage, private credentials, nightly recovery snapshots, verified HTTPS
+checks and authorized image-archive recovery. Its
+[editable architecture board](https://draw.home.egouda.xyz/?board=muggkm91mb1c1gre3qp)
+shows the deployed structure and request/data flows. The host VPN and fail-closed
+firewall remain in force.

@@ -228,3 +228,20 @@ Moonbase 2.2.0.0 is installed alongside stock Jellyfin for the Moonfin client.
 See [the unified media rollout](unified-media.md). It does not make all remaining
 native apps SSO. Unattended maintenance credentials have their own
 [agent access contract](agents/credentials.md#unattended-agent-access-prepared-not-activated).
+
+
+## Shared Workspace public access — 24 September 2026
+
+Workspace is an explicit public exception at `workspace.egouda.xyz`; only it and
+`signin.egouda.xyz` traverse the named Cloudflare Tunnel. Existing home routes
+remain private. Authelia preserves `home_session` and adds the distinct
+`workspace_session` cookie for the public parent domain. The shared policy
+compiler protects all browser content and validates the Workspace service grant.
+
+Agents use scoped, hashed, expiring Workspace keys. Recommended onboarding starts
+with the agent: a public pairing request produces a confirmation link, the invited
+human signs in and clicks Connect this agent, then only the requesting agent can
+claim its credential once. API keys cannot confirm pairing or create users.
+Machine paths strip caller identity headers. Public discovery exposes no content.
+See [Workspace's boundaries and runbook](shared-workspace.md), including the
+[editable flow board](https://draw.home.egouda.xyz/?board=muggkm91mb1c1gre3qp).

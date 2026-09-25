@@ -15,7 +15,7 @@ p.add_argument('--access',choices=['owner','household'],default='owner')
 p.add_argument('--adapter',choices=['gateway','native','trusted-header','oidc','upstream-basic'],default='gateway')
 p.add_argument('--sync',action='store_true')
 a=p.parse_args();assert re.fullmatch('[a-z0-9-]+',a.id)
-u=urlsplit(a.url);assert u.scheme=='https' and u.hostname.endswith('.home.egouda.xyz') and not u.username and not u.query
+u=urlsplit(a.url);assert u.scheme=='https' and (u.hostname.endswith('.home.egouda.xyz') or u.hostname=='workspace.egouda.xyz') and not u.username and not u.query
 repo=Path(__file__).resolve().parents[1];file=repo/'config/services.json';catalog=json.loads(file.read_text())
 entry={'id':a.id,'title':a.title,'url':a.url,'probe_url':a.probe_url,'credential':a.credential,'category':a.category,'auth':{'mode':'gateway','access':a.access,'adapter':a.adapter},'icon':a.icon,'expected_status':[200,301,302,303,307,308,401]}
 catalog['services']=[s for s in catalog['services'] if s['id']!=a.id]+[entry]

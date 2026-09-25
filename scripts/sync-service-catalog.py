@@ -10,6 +10,8 @@ import urllib.error
 import urllib.request
 import uuid
 from urllib.parse import urlsplit
+from auth_session import prefer_ipv4
+prefer_ipv4()
 os.umask(0o077)
 repo=Path(__file__).resolve().parents[1]
 services=json.loads((repo/'config/services.json').read_text())['services']

@@ -1,0 +1,11 @@
+[Unit]
+Description=Shared Workspace isolated script worker
+After=default.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/workspace/home-server/scripts/workspace-worker.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+[Install]
+WantedBy=default.target

@@ -1,0 +1,22 @@
+groups:
+  - name: shared-workspace
+    rules:
+      - alert: WorkspaceUnavailable
+        expr: home_service_up{service="workspace"} == 0
+        for: 3m
+        labels: {severity: warning}
+        annotations: {summary: 'Shared Workspace public HTTPS is unavailable'}
+      - alert: WorkspaceMetricsUnavailable
+        expr: home_workspace_metrics_up == 0 or time() - home_workspace_collected_seconds > 180
+        for: 3m
+        labels: {severity: warning}
+        annotations: {summary: 'Workspace telemetry could not be collected'}
+      - alert: WorkspaceScriptFailures
+        expr: delta(home_workspace_script_jobs{status="failed"}[10m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: 'A Workspace script failed; inspect Script runs'}
+      - alert: WorkspaceBackupOld
+        expr: time() - home_workspace_backup_last_success_seconds > 172800
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: 'Workspace has no verified snapshot within 48 hours'}
